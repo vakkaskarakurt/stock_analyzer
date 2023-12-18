@@ -2,7 +2,11 @@
 Analyzing price changes of turkish stocks in dollar terms.
 
 Clone:
-`git clone https://github.com/vakkaskarakurt/stock_analyzer`
+<pre>
+<code>
+git clone https://github.com/vakkaskarakurt/stock_analyzer
+</code>
+</pre>
 
 Creating Enviroment:
 python -m venv stockenv
