@@ -13,10 +13,13 @@ class StockAnalyzer:
         Belirtilen hisse senedi ve döviz kuru için fiyat verilerini alır ve hesaplar.
         """
         try:
+            # Hisse senedi ve döviz kuru verilerini yfinance kullanarak çek
             stock_data = yf.download(stock_code, start_date, end_date)
             currency_data = yf.download(currency_code, start_date, end_date)
 
+            # Hisse senedi ve döviz kuru verilerini birleştir
             merged_data = pd.merge(stock_data['Close'], currency_data['Close'], left_index=True, right_index=True, suffixes=(' (' + stock_code + '/TL)', ' (TL/USD)'))
+            # Dönüştürülmüş kapanış fiyatını hesapla ve yeni sütunu ekleyerek veriyi döndür
             merged_data['Close (USD)'] = merged_data['Close (' + stock_code + '/TL)'] * merged_data['Close (TL/USD)']
 
             return merged_data
@@ -25,6 +28,7 @@ class StockAnalyzer:
 
     @staticmethod
     def determine_time_range(end_date, time_range):
+        # Belirtilen zaman aralığına göre başlangıç tarihini belirle
         if time_range == '1 Hafta':
             return end_date - timedelta(days=7)
         elif time_range == '1 Ay':
@@ -44,28 +48,34 @@ class StockAnalyzer:
 
     @staticmethod
     def time_range_button_clicked(stock_entry, result_text, chart_canvas, progress_bar, time_range):
+        # Hisse senedi kodu girilip girilmediğini kontrol et
         if not stock_entry.get():
             raise StockAnalyzerError("Lütfen bir hisse senedi kodu girin.")
 
         try:
+            # İlerleme çubuğunu başlat
             progress_bar.start()
+            # Şu anki tarihi al ve zaman aralığına göre başlangıç tarihini belirle
             end_date = datetime.now()
             start_date = StockAnalyzer.determine_time_range(end_date, time_range)
 
+            # Hisse senedi ve döviz kuru verilerini çek ve işle
             stock_code = stock_entry.get() + ".IS"
             currency_code = "TRYUSD=X"
-
             result_data = StockAnalyzer.get_price_data(stock_code, currency_code, start_date, end_date)
 
+            # Sonuç metnini güncelle ve grafiği çiz
             StockAnalyzer.update_result_text(result_text, result_data)
             StockAnalyzer.plot_chart(result_data, chart_canvas)
         except Exception as e:
             raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
         finally:
+            # İlerleme çubuğunu durdur
             progress_bar.stop()
 
     @staticmethod
     def update_result_text(result_text, result_data):
+        # Sonuç metni widget'ını güncelle
         result_text.config(state=tk.NORMAL)
         result_text.delete(1.0, tk.END)
         result_text.insert(tk.END, str(result_data))
@@ -74,6 +84,7 @@ class StockAnalyzer:
 
     @staticmethod
     def plot_chart(result_data, chart_canvas):
+        # Grafik penceresini temizle, yeni bir çizim yap ve özelleştirmeleri uygula
         plt.clf()
         plt.plot(result_data.index, result_data['Close (USD)'], label='Çarpılmış Kapanış Fiyatları', color='#4CAF50', linestyle='-', linewidth=2)
         plt.title('USD Dönüştürülmüş Kapanış Fiyatları Grafiği', fontsize=16)
@@ -82,4 +93,5 @@ class StockAnalyzer:
         plt.legend()
         plt.grid(True, linestyle='--', alpha=0.7)
 
+        # Grafik penceresini çizimle güncelle
         chart_canvas.draw()

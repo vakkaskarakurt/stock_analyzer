@@ -15,6 +15,7 @@ class GUIManager:
         self.create_widgets()
 
     def create_widgets(self):
+        # Arayüz bileşenlerini oluştur
         self.create_title_label()
         self.create_stock_entry()
         self.create_date_entry("Başlangıç Tarihi:", 2)
@@ -25,40 +26,48 @@ class GUIManager:
         self.create_progress_bar()
 
     def create_title_label(self):
+        # Başlık etiketini oluştur
         title_label = ttk.Label(self.root, text="USD Cinsinden Türk Hisseleri", font=('Helvetica', 16, 'bold'))
         title_label.grid(row=0, column=0, columnspan=8, pady=20)
 
     def create_stock_entry(self):
+        # Hisse kodu giriş alanını oluştur
         ttk.Label(self.root, text="Hisse Kodu:", font=('Helvetica', 12, 'bold')).grid(row=1, column=0, pady=10)
         self.stock_entry = ttk.Entry(self.root, font=('Helvetica', 12))
         self.stock_entry.grid(row=1, column=1, pady=10)
 
     def create_date_entry(self, label_text, row):
+        # Tarih giriş alanını oluştur
         ttk.Label(self.root, text=label_text, font=('Helvetica', 12, 'bold')).grid(row=row, column=0, pady=10, sticky="e")
         date_entry = DateEntry(self.root, width=12, background='darkblue', foreground='white', borderwidth=2)
         date_entry.grid(row=row, column=1, pady=10)
         return date_entry
 
     def create_time_range_buttons(self, button_texts):
+        # Zaman aralığı düğmelerini oluştur
         self.time_range_buttons = [ttk.Button(self.root, text=text, command=lambda text=text: self.time_range_button_clicked(text), style='TButton') for text in button_texts]
 
         for i, button in enumerate(self.time_range_buttons):
             button.grid(row=4, column=i, padx=10, pady=10)
 
     def create_result_text(self):
+        # Sonuç metin alanını oluştur
         self.result_text_widget = tk.Text(self.root, height=15, width=60, state=tk.DISABLED)
         self.result_text_widget.grid(row=5, column=0, columnspan=8, pady=10)
 
     def create_chart_canvas(self):
+        # Grafik penceresini oluştur
         self.chart_canvas = FigureCanvasTkAgg(plt.gcf(), master=self.root)
         self.chart_widget = self.chart_canvas.get_tk_widget()
         self.chart_widget.grid(row=6, column=0, columnspan=8, pady=10, padx=10)
 
     def create_progress_bar(self):
+        # İlerleme çubuğunu oluştur
         self.progress_bar = ttk.Progressbar(self.root, mode='determinate', length=200)
         self.progress_bar.grid(row=7, column=0, columnspan=8, pady=10)
 
     def time_range_button_clicked(self, time_range):
+        # Zaman aralığı düğmesine tıklandığında çağrılan fonksiyon
         try:
             StockAnalyzer.time_range_button_clicked(self.stock_entry, self.result_text_widget, self.chart_canvas, self.progress_bar, time_range)
         except StockAnalyzerError as e:
