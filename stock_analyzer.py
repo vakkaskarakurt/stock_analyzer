@@ -8,7 +8,10 @@ from custom_exceptions import StockAnalyzerError
 
 class StockAnalyzer:
     @staticmethod
-    def fetch_and_calculate_prices(stock_code, currency_code, start_date, end_date):
+    def get_price_data(stock_code, currency_code, start_date, end_date):
+        """
+        Belirtilen hisse senedi ve döviz kuru için fiyat verilerini alır ve hesaplar.
+        """
         try:
             stock_data = yf.download(stock_code, start_date, end_date)
             currency_data = yf.download(currency_code, start_date, end_date)
@@ -21,16 +24,23 @@ class StockAnalyzer:
             raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
 
     @staticmethod
-    def plot_chart(result_data, chart_canvas):
-        plt.clf()
-        plt.plot(result_data.index, result_data['Close (USD)'], label='Multiplied Closing Prices', color='#4CAF50', linestyle='-', linewidth=2)
-        plt.title('USD Converted Closing Prices Chart', fontsize=16)
-        plt.xlabel('Date', fontsize=12)
-        plt.ylabel('USD Converted Closing Prices', fontsize=12)
-        plt.legend()
-        plt.grid(True, linestyle='--', alpha=0.7)
-
-        chart_canvas.draw()
+    def determine_time_range(end_date, time_range):
+        if time_range == '1 Hafta':
+            return end_date - timedelta(days=7)
+        elif time_range == '1 Ay':
+            return end_date - timedelta(days=30)
+        elif time_range == '3 Ay':
+            return end_date - timedelta(days=90)
+        elif time_range == '6 Ay':
+            return end_date - timedelta(days=180)
+        elif time_range == '1 Yıl':
+            return end_date - timedelta(days=365)
+        elif time_range == '3 Yıl':
+            return end_date - timedelta(days=365*3)
+        elif time_range == '5 Yıl':
+            return end_date - timedelta(days=365*5)
+        elif time_range == '10 Yıl':
+            return end_date - timedelta(days=365*10)
 
     @staticmethod
     def time_range_button_clicked(stock_entry, result_text, chart_canvas, progress_bar, time_range):
@@ -39,34 +49,37 @@ class StockAnalyzer:
 
         try:
             progress_bar.start()
-
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=7) if time_range == '1 Hafta' else \
-                        end_date - timedelta(days=30) if time_range == '1 Ay' else \
-                        end_date - timedelta(days=90) if time_range == '3 Ay' else \
-                        end_date - timedelta(days=180) if time_range == '6 Ay' else \
-                        end_date - timedelta(days=365) if time_range == '1 Yıl' else \
-                        end_date - timedelta(days=365*3) if time_range == '3 Yıl' else \
-                        end_date - timedelta(days=365*5) if time_range == '5 Yıl' else \
-                        end_date - timedelta(days=365*10)
+            start_date = StockAnalyzer.determine_time_range(end_date, time_range)
 
             stock_code = stock_entry.get() + ".IS"
             currency_code = "TRYUSD=X"
 
-            result_data = StockAnalyzer.fetch_and_calculate_prices(stock_code, currency_code, start_date, end_date)
-            result_text.config(state=tk.NORMAL)
-            result_text.delete(1.0, tk.END)
-            result_text.insert(tk.END, str(result_data))
-            result_text.config(state=tk.DISABLED)
+            result_data = StockAnalyzer.get_price_data(stock_code, currency_code, start_date, end_date)
 
-            result_text.see(tk.END)
-
+            StockAnalyzer.update_result_text(result_text, result_data)
             StockAnalyzer.plot_chart(result_data, chart_canvas)
         except Exception as e:
             raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
         finally:
             progress_bar.stop()
 
-# custom_exceptions.py
-class StockAnalyzerError(Exception):
-    pass
+    @staticmethod
+    def update_result_text(result_text, result_data):
+        result_text.config(state=tk.NORMAL)
+        result_text.delete(1.0, tk.END)
+        result_text.insert(tk.END, str(result_data))
+        result_text.config(state=tk.DISABLED)
+        result_text.see(tk.END)
+
+    @staticmethod
+    def plot_chart(result_data, chart_canvas):
+        plt.clf()
+        plt.plot(result_data.index, result_data['Close (USD)'], label='Çarpılmış Kapanış Fiyatları', color='#4CAF50', linestyle='-', linewidth=2)
+        plt.title('USD Dönüştürülmüş Kapanış Fiyatları Grafiği', fontsize=16)
+        plt.xlabel('Tarih', fontsize=12)
+        plt.ylabel('USD Dönüştürülmüş Kapanış Fiyatları', fontsize=12)
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.7)
+
+        chart_canvas.draw()

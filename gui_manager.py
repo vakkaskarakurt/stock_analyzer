@@ -1,4 +1,3 @@
-# gui_manager.py
 import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
@@ -16,31 +15,23 @@ class GUIManager:
         self.create_widgets()
 
     def create_widgets(self):
-        # Başlık Etiketi
+        self.create_title_label()
+        self.create_stock_entry()
+        self.create_date_entry("Başlangıç Tarihi:", 2)
+        self.create_date_entry("Bitiş Tarihi:", 3)
+        self.create_time_range_buttons(['1 Hafta', '1 Ay', '3 Ay', '6 Ay', '1 Yıl', '3 Yıl', '5 Yıl', '10 Yıl'])
+        self.create_result_text()
+        self.create_chart_canvas()
+        self.create_progress_bar()
+
+    def create_title_label(self):
         title_label = ttk.Label(self.root, text="USD Cinsinden Türk Hisseleri", font=('Helvetica', 16, 'bold'))
         title_label.grid(row=0, column=0, columnspan=8, pady=20)
 
-        # Hisse Kodu Giriş Alanı
+    def create_stock_entry(self):
         ttk.Label(self.root, text="Hisse Kodu:", font=('Helvetica', 12, 'bold')).grid(row=1, column=0, pady=10)
         self.stock_entry = ttk.Entry(self.root, font=('Helvetica', 12))
         self.stock_entry.grid(row=1, column=1, pady=10)
-
-        # Başlangıç ve Bitiş Tarih Giriş Alanları
-        self.create_date_entry("Başlangıç Tarihi:", 2)
-        self.create_date_entry("Bitiş Tarihi:", 3)
-
-        # Zaman Aralığı Düğmeleri
-        time_range_button_texts = ['1 Hafta', '1 Ay', '3 Ay', '6 Ay', '1 Yıl', '3 Yıl', '5 Yıl', '10 Yıl']
-        self.create_time_range_buttons(time_range_button_texts)
-
-        # Sonuç Metin Alanı
-        self.create_result_text()
-
-        # Grafik Alanı
-        self.create_chart_canvas()
-
-        # İlerleme Çubuğu
-        self.create_progress_bar()
 
     def create_date_entry(self, label_text, row):
         ttk.Label(self.root, text=label_text, font=('Helvetica', 12, 'bold')).grid(row=row, column=0, pady=10, sticky="e")
