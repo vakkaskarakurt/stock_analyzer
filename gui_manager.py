@@ -1,3 +1,4 @@
+# gui_manager.py
 import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
@@ -54,8 +55,8 @@ class GUIManager:
             button.grid(row=4, column=i, padx=10, pady=10)
 
     def create_result_text(self):
-        self.result_text = tk.Text(self.root, height=15, width=60, state=tk.DISABLED)
-        self.result_text.grid(row=5, column=0, columnspan=8, pady=10)
+        self.result_text_widget = tk.Text(self.root, height=15, width=60, state=tk.DISABLED)
+        self.result_text_widget.grid(row=5, column=0, columnspan=8, pady=10)
 
     def create_chart_canvas(self):
         self.chart_canvas = FigureCanvasTkAgg(plt.gcf(), master=self.root)
@@ -68,11 +69,6 @@ class GUIManager:
 
     def time_range_button_clicked(self, time_range):
         try:
-            StockAnalyzer.time_range_button_clicked(self.stock_entry, self.result_text, self.chart_canvas, self.progress_bar, time_range)
+            StockAnalyzer.time_range_button_clicked(self.stock_entry, self.result_text_widget, self.chart_canvas, self.progress_bar, time_range)
         except StockAnalyzerError as e:
             print(f"Hata oluştu: {e}")
-
-# Uygulama Oluştur
-root = tk.Tk()
-app = GUIManager(root)
-root.mainloop()

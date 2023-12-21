@@ -14,7 +14,7 @@ class StockAnalyzer:
             currency_data = yf.download(currency_code, start_date, end_date)
 
             merged_data = pd.merge(stock_data['Close'], currency_data['Close'], left_index=True, right_index=True, suffixes=(' (' + stock_code + '/TL)', ' (TL/USD)'))
-            merged_data['Close (USD)'] = merged_data['Close'' (' + stock_code + '/TL)'] * merged_data['Close (TL/USD)']
+            merged_data['Close (USD)'] = merged_data['Close (' + stock_code + '/TL)'] * merged_data['Close (TL/USD)']
 
             return merged_data
         except Exception as e:
@@ -41,13 +41,13 @@ class StockAnalyzer:
             progress_bar.start()
 
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=7) if time_range == '1 Week' else \
-                        end_date - timedelta(days=30) if time_range == '1 Month' else \
-                        end_date - timedelta(days=90) if time_range == '3 Months' else \
-                        end_date - timedelta(days=180) if time_range == '6 Months' else \
-                        end_date - timedelta(days=365) if time_range == '1 Year' else \
-                        end_date - timedelta(days=365*3) if time_range == '3 Years' else \
-                        end_date - timedelta(days=365*5) if time_range == '5 Years' else \
+            start_date = end_date - timedelta(days=7) if time_range == '1 Hafta' else \
+                        end_date - timedelta(days=30) if time_range == '1 Ay' else \
+                        end_date - timedelta(days=90) if time_range == '3 Ay' else \
+                        end_date - timedelta(days=180) if time_range == '6 Ay' else \
+                        end_date - timedelta(days=365) if time_range == '1 Yıl' else \
+                        end_date - timedelta(days=365*3) if time_range == '3 Yıl' else \
+                        end_date - timedelta(days=365*5) if time_range == '5 Yıl' else \
                         end_date - timedelta(days=365*10)
 
             stock_code = stock_entry.get() + ".IS"
@@ -66,3 +66,7 @@ class StockAnalyzer:
             raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
         finally:
             progress_bar.stop()
+
+# custom_exceptions.py
+class StockAnalyzerError(Exception):
+    pass
