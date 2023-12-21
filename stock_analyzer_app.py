@@ -1,65 +1,68 @@
-# stock_analyzer_app.py
+# stock_analyzer.py
+import yfinance as yf
+import pandas as pd
+from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 import tkinter as tk
-from tkinter import ttk
-from tkcalendar import DateEntry
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib.pyplot as plt  # Import matplotlib.pyplot
+from custom_exceptions import StockAnalyzerError
 
-from stock_analyzer import StockAnalyzer
+class StockAnalyzer:
+    @staticmethod
+    def fetch_and_calculate_prices(stock_code, currency_code, start_date, end_date):
+        try:
+            stock_data = yf.download(stock_code, start_date, end_date)
+            currency_data = yf.download(currency_code, start_date, end_date)
 
-class StockAnalyzerApp:
-    def __init__(self, root):
-        self.root = root
-        root.title("Turkish Stock Prices in USD")
-        root.geometry("875x1200")
-        root.resizable(False, False)
+            merged_data = pd.merge(stock_data['Close'], currency_data['Close'], left_index=True, right_index=True, suffixes=(' (' + stock_code + '/TL)', ' (TL/USD)'))
+            merged_data['Close (USD)'] = merged_data['Close'' (' + stock_code + '/TL)'] * merged_data['Close (TL/USD)']
 
-        self.create_widgets()
+            return merged_data
+        except Exception as e:
+            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
 
-    def create_widgets(self):
-        ttk.Label(self.root, text="Stock Code:", font=('Helvetica', 12, 'bold')).grid(row=0, column=0, pady=10)
-        self.stock_entry = ttk.Entry(self.root, font=('Helvetica', 12))
-        self.stock_entry.grid(row=0, column=1, pady=10)
+    @staticmethod
+    def plot_chart(result_data, chart_canvas):
+        plt.clf()
+        plt.plot(result_data.index, result_data['Close (USD)'], label='Multiplied Closing Prices', color='#4CAF50', linestyle='-', linewidth=2)
+        plt.title('USD Converted Closing Prices Chart', fontsize=16)
+        plt.xlabel('Date', fontsize=12)
+        plt.ylabel('USD Converted Closing Prices', fontsize=12)
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.7)
 
-        self.create_date_entry("Start Date:", 1)
-        self.create_date_entry("End Date:", 2)
+        chart_canvas.draw()
 
-        time_range_button_texts = ['1 Week', '1 Month', '3 Months', '6 Months', '1 Year', '3 Years', '5 Years', '10 Years']
-        self.create_time_range_buttons(time_range_button_texts)
+    @staticmethod
+    def time_range_button_clicked(stock_entry, result_text, chart_canvas, progress_bar, time_range):
+        if not stock_entry.get():
+            raise StockAnalyzerError("Lütfen bir hisse senedi kodu girin.")
 
-        self.create_result_text()
-        self.create_chart_canvas()
-        self.create_progress_bar()
+        try:
+            progress_bar.start()
 
-    def create_date_entry(self, label_text, row):
-        ttk.Label(self.root, text=label_text, font=('Helvetica', 12, 'bold')).grid(row=row, column=0, pady=10, sticky="e")
-        date_entry = DateEntry(self.root, width=12, background='darkblue', foreground='white', borderwidth=2)
-        date_entry.grid(row=row, column=1, pady=10)
-        return date_entry
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=7) if time_range == '1 Week' else \
+                        end_date - timedelta(days=30) if time_range == '1 Month' else \
+                        end_date - timedelta(days=90) if time_range == '3 Months' else \
+                        end_date - timedelta(days=180) if time_range == '6 Months' else \
+                        end_date - timedelta(days=365) if time_range == '1 Year' else \
+                        end_date - timedelta(days=365*3) if time_range == '3 Years' else \
+                        end_date - timedelta(days=365*5) if time_range == '5 Years' else \
+                        end_date - timedelta(days=365*10)
 
-    def create_time_range_buttons(self, button_texts):
-        self.time_range_buttons = [ttk.Button(self.root, text=text, command=lambda text=text: self.time_range_button_clicked(text), style='TButton') for text in button_texts]
+            stock_code = stock_entry.get() + ".IS"
+            currency_code = "TRYUSD=X"
 
-        for i, button in enumerate(self.time_range_buttons):
-            button.grid(row=3, column=i, padx=10, pady=10)
+            result_data = StockAnalyzer.fetch_and_calculate_prices(stock_code, currency_code, start_date, end_date)
+            result_text.config(state=tk.NORMAL)
+            result_text.delete(1.0, tk.END)
+            result_text.insert(tk.END, str(result_data))
+            result_text.config(state=tk.DISABLED)
 
-    def create_result_text(self):
-        self.result_text = tk.Text(self.root, height=15, width=60, state=tk.DISABLED)
-        self.result_text.grid(row=4, column=0, columnspan=8, pady=10)
+            result_text.see(tk.END)
 
-    def create_chart_canvas(self):
-        self.chart_canvas = FigureCanvasTkAgg(plt.gcf(), master=self.root)
-        self.chart_widget = self.chart_canvas.get_tk_widget()
-        self.chart_widget.grid(row=5, column=0, columnspan=8, pady=10, padx=10)
-
-    def create_progress_bar(self):
-        self.progress_bar = ttk.Progressbar(self.root, mode='determinate', length=200)
-        self.progress_bar.grid(row=6, column=0, columnspan=8, pady=10)
-
-    def time_range_button_clicked(self, time_range):
-        StockAnalyzer.time_range_button_clicked(self.stock_entry, self.result_text, self.chart_canvas, self.progress_bar, time_range)
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = StockAnalyzerApp(root)
-    root.mainloop()
+            StockAnalyzer.plot_chart(result_data, chart_canvas)
+        except Exception as e:
+            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
+        finally:
+            progress_bar.stop()

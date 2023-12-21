@@ -4,17 +4,21 @@ import pandas as pd
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import tkinter as tk
+from custom_exceptions import StockAnalyzerError
 
 class StockAnalyzer:
     @staticmethod
     def fetch_and_calculate_prices(stock_code, currency_code, start_date, end_date):
-        stock_data = yf.download(stock_code, start_date, end_date)
-        currency_data = yf.download(currency_code, start_date, end_date)
+        try:
+            stock_data = yf.download(stock_code, start_date, end_date)
+            currency_data = yf.download(currency_code, start_date, end_date)
 
-        merged_data = pd.merge(stock_data['Close'], currency_data['Close'], left_index=True, right_index=True, suffixes=(' (' + stock_code + '/TL)', ' (TL/USD)'))
-        merged_data['Close (USD)'] = merged_data['Close'' (' + stock_code + '/TL)'] * merged_data['Close (TL/USD)']
+            merged_data = pd.merge(stock_data['Close'], currency_data['Close'], left_index=True, right_index=True, suffixes=(' (' + stock_code + '/TL)', ' (TL/USD)'))
+            merged_data['Close (USD)'] = merged_data['Close'' (' + stock_code + '/TL)'] * merged_data['Close (TL/USD)']
 
-        return merged_data
+            return merged_data
+        except Exception as e:
+            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
 
     @staticmethod
     def plot_chart(result_data, chart_canvas):
@@ -30,28 +34,35 @@ class StockAnalyzer:
 
     @staticmethod
     def time_range_button_clicked(stock_entry, result_text, chart_canvas, progress_bar, time_range):
-        progress_bar.start()
+        if not stock_entry.get():
+            raise StockAnalyzerError("Lütfen bir hisse senedi kodu girin.")
 
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=7) if time_range == '1 Week' else \
-                     end_date - timedelta(days=30) if time_range == '1 Month' else \
-                     end_date - timedelta(days=90) if time_range == '3 Months' else \
-                     end_date - timedelta(days=180) if time_range == '6 Months' else \
-                     end_date - timedelta(days=365) if time_range == '1 Year' else \
-                     end_date - timedelta(days=365*3) if time_range == '3 Years' else \
-                     end_date - timedelta(days=365*5) if time_range == '5 Years' else \
-                     end_date - timedelta(days=365*10)
+        try:
+            progress_bar.start()
 
-        stock_code = stock_entry.get() + ".IS"
-        currency_code = "TRYUSD=X"
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=7) if time_range == '1 Week' else \
+                        end_date - timedelta(days=30) if time_range == '1 Month' else \
+                        end_date - timedelta(days=90) if time_range == '3 Months' else \
+                        end_date - timedelta(days=180) if time_range == '6 Months' else \
+                        end_date - timedelta(days=365) if time_range == '1 Year' else \
+                        end_date - timedelta(days=365*3) if time_range == '3 Years' else \
+                        end_date - timedelta(days=365*5) if time_range == '5 Years' else \
+                        end_date - timedelta(days=365*10)
 
-        result_data = StockAnalyzer.fetch_and_calculate_prices(stock_code, currency_code, start_date, end_date)
-        result_text.config(state=tk.NORMAL)
-        result_text.delete(1.0, tk.END)
-        result_text.insert(tk.END, str(result_data))
-        result_text.config(state=tk.DISABLED)
+            stock_code = stock_entry.get() + ".IS"
+            currency_code = "TRYUSD=X"
 
-        result_text.see(tk.END)
+            result_data = StockAnalyzer.fetch_and_calculate_prices(stock_code, currency_code, start_date, end_date)
+            result_text.config(state=tk.NORMAL)
+            result_text.delete(1.0, tk.END)
+            result_text.insert(tk.END, str(result_data))
+            result_text.config(state=tk.DISABLED)
 
-        StockAnalyzer.plot_chart(result_data, chart_canvas)
-        progress_bar.stop()
+            result_text.see(tk.END)
+
+            StockAnalyzer.plot_chart(result_data, chart_canvas)
+        except Exception as e:
+            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
+        finally:
+            progress_bar.stop()
