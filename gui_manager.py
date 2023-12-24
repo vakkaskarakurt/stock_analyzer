@@ -18,12 +18,15 @@ class GUIManager:
         # Arayüz bileşenlerini oluştur
         self.create_title_label()
         self.create_stock_entry()
-        self.create_date_entry("Başlangıç Tarihi:", 2)
-        self.create_date_entry("Bitiş Tarihi:", 3)
+        self.start_date_entry = self.create_date_entry("Başlangıç Tarihi:", 2)
+        self.end_date_entry = self.create_date_entry("Bitiş Tarihi:", 3)
         self.create_time_range_buttons(['1 Hafta', '1 Ay', '3 Ay', '6 Ay', '1 Yıl', '3 Yıl', '5 Yıl', '10 Yıl'])
         self.create_result_text()
         self.create_chart_canvas()
         self.create_progress_bar()
+
+        # Grafik oluşturmak için tetikleyiciyi ekle
+        ttk.Button(self.root, text="Grafik Oluştur", command=self.generate_chart).grid(row=4, column=len(self.time_range_buttons), padx=10, pady=10)
 
     def create_title_label(self):
         # Başlık etiketini oluştur
@@ -72,3 +75,19 @@ class GUIManager:
             StockAnalyzer.time_range_button_clicked(self.stock_entry, self.result_text_widget, self.chart_canvas, self.progress_bar, time_range)
         except StockAnalyzerError as e:
             print(f"Hata oluştu: {e}")
+
+    def generate_chart(self):
+        # Grafik oluşturma işlemlerini burada yapın
+        start_date = self.start_date_entry.get_date()
+        end_date = self.end_date_entry.get_date()
+
+        # StockAnalyzer sınıfına start_date ve end_date'i göndererek grafik oluşturun
+        try:
+            StockAnalyzer.generate_chart(self.stock_entry.get(), start_date, end_date, self.chart_canvas, self.progress_bar)
+        except StockAnalyzerError as e:
+            print(f"Hata oluştu: {e}")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = GUIManager(root)
+    root.mainloop()
