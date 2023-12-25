@@ -1,4 +1,3 @@
-#gui_manager.py
 import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
@@ -7,6 +6,9 @@ from stock_analyzer import StockAnalyzer, StockAnalyzerError
 from matplotlib import pyplot as plt
 
 class GUIManager:
+    WINDOW_DIMENSIONS = "800x1080"
+    MIN_WINDOW_SIZE = (800, 1080)
+
     def __init__(self, root):
         self.root = root
         root.title("USD Cinsinden Türk Hisseleri")
@@ -14,8 +16,8 @@ class GUIManager:
         self.create_widgets()
 
     def set_window_properties(self):
-        self.root.geometry("800x1080")
-        self.root.minsize(800, 1080)
+        self.root.geometry(self.WINDOW_DIMENSIONS)
+        self.root.minsize(*self.MIN_WINDOW_SIZE)
         self.root.resizable(True, True)
 
     def create_widgets(self):
@@ -88,7 +90,6 @@ class GUIManager:
             self.show_error_message(f"Hata oluştu: {e}")
 
     def show_error_message(self, message):
-        # You can customize this method to show error messages to the user (e.g., using a messagebox)
         print(message)
 
 if __name__ == "__main__":
