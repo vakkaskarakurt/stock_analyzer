@@ -1,4 +1,5 @@
-#gui_manager.py
+# gui_manager.py
+
 import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
@@ -28,7 +29,6 @@ class GUIManager:
         self.create_chart_canvas()
         self.create_progress_bar()
         self.create_generate_chart_button()
-
         self.configure_grid()
 
     def configure_grid(self):
