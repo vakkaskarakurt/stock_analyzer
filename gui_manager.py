@@ -1,3 +1,4 @@
+#gui_manager.py
 import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
@@ -9,13 +10,13 @@ class GUIManager:
     def __init__(self, root):
         self.root = root
         root.title("USD Cinsinden Türk Hisseleri")
-
-        # Pencere boyutu 1280x720 olarak ayarlanıyor
-        root.geometry("1280x720")
-        root.minsize(800, 600)  # Set a minimum size for the window
-        root.resizable(True, True)
-
+        self.set_window_properties()
         self.create_widgets()
+
+    def set_window_properties(self):
+        self.root.geometry("800x1080")
+        self.root.minsize(800, 1080)
+        self.root.resizable(True, True)
 
     def create_widgets(self):
         self.create_title_label()
@@ -26,10 +27,11 @@ class GUIManager:
         self.create_result_text()
         self.create_chart_canvas()
         self.create_progress_bar()
+        self.create_generate_chart_button()
 
-        ttk.Button(self.root, text="Grafik Oluştur", command=self.generate_chart).grid(row=4, column=len(self.time_range_buttons), padx=10, pady=10, sticky="nsew")
+        self.configure_grid()
 
-        # Allow rows and columns to expand
+    def configure_grid(self):
         for i in range(8):
             self.root.grid_rowconfigure(i, weight=1)
             self.root.grid_columnconfigure(i, weight=1)
@@ -69,18 +71,25 @@ class GUIManager:
         self.progress_bar = ttk.Progressbar(self.root, mode='determinate', length=200)
         self.progress_bar.grid(row=7, column=0, columnspan=8, pady=10, sticky="nsew")
 
+    def create_generate_chart_button(self):
+        ttk.Button(self.root, text="Grafik Oluştur", command=self.generate_chart).grid(row=4, column=len(self.time_range_buttons), padx=10, pady=10, sticky="nsew")
+
     def time_range_button_clicked(self, time_range):
         try:
             StockAnalyzer.time_range_button_clicked(self.stock_entry, self.result_text_widget, self.chart_canvas, self.progress_bar, time_range)
         except StockAnalyzerError as e:
-            print(f"Hata oluştu: {e}")
+            self.show_error_message(f"Hata oluştu: {e}")
 
     def generate_chart(self):
         try:
             analyzer = StockAnalyzer()
             analyzer.generate_chart(self.stock_entry.get(), self.start_date_entry.get_date(), self.end_date_entry.get_date(), self.chart_canvas, self.progress_bar)
         except StockAnalyzerError as e:
-            print(f"Hata oluştu: {e}")
+            self.show_error_message(f"Hata oluştu: {e}")
+
+    def show_error_message(self, message):
+        # You can customize this method to show error messages to the user (e.g., using a messagebox)
+        print(message)
 
 if __name__ == "__main__":
     root = tk.Tk()
