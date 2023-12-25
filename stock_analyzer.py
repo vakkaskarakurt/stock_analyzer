@@ -1,3 +1,4 @@
+# stock_analyzer.py
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
@@ -39,6 +40,27 @@ class StockAnalyzer:
             return end_date - timedelta(days=365*10)
 
     @staticmethod
+    def generate_chart(stock_code, start_date, end_date, chart_canvas, progress_bar):
+        try:
+            stock_code = stock_code + ".IS"
+            stock_data = StockAnalyzer.get_price_data(stock_code, "TRYUSD=X", start_date, end_date)
+
+            plt.clf()
+            plt.plot(stock_data.index, stock_data['Close (USD)'], label='Çarpılmış Kapanış Fiyatları', color='#4CAF50', linestyle='-', linewidth=2)
+            plt.title('USD Dönüştürülmüş Kapanış Fiyatları Grafiği', fontsize=16)
+            plt.xlabel('Tarih', fontsize=12)
+            plt.ylabel('USD Dönüştürülmüş Kapanış Fiyatları', fontsize=12)
+            plt.legend()
+            plt.grid(True, linestyle='--', alpha=0.7)
+
+            chart_canvas.draw()
+
+        except StockAnalyzerError as e:
+            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
+        finally:
+            progress_bar.stop()
+
+    @staticmethod
     def time_range_button_clicked(stock_entry, result_text, chart_canvas, progress_bar, time_range):
         if not stock_entry.get():
             raise StockAnalyzerError("Lütfen bir hisse senedi kodu girin.")
@@ -47,16 +69,13 @@ class StockAnalyzer:
             progress_bar.start()
             end_date = datetime.now()
             start_date = StockAnalyzer.determine_time_range(end_date, time_range)
-            stock_code = stock_entry.get() + ".IS"
-            currency_code = "TRYUSD=X"
-            result_data = StockAnalyzer.get_price_data(stock_code, currency_code, start_date, end_date)
-            StockAnalyzer.update_result_text(result_text, result_data)
-            StockAnalyzer.plot_chart(result_data, chart_canvas)
+            stock_code = stock_entry.get()
+            StockAnalyzer.generate_chart(stock_code, start_date, end_date, chart_canvas, progress_bar)
         except StockAnalyzerError as e:
             raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
         finally:
             progress_bar.stop()
-
+    
     @staticmethod
     def update_result_text(result_text, result_data):
         result_text.config(state=tk.NORMAL)
@@ -64,15 +83,3 @@ class StockAnalyzer:
         result_text.insert(tk.END, str(result_data))
         result_text.config(state=tk.DISABLED)
         result_text.see(tk.END)
-
-    @staticmethod
-    def plot_chart(result_data, chart_canvas):
-        plt.clf()
-        plt.plot(result_data.index, result_data['Close (USD)'], label='Çarpılmış Kapanış Fiyatları', color='#4CAF50', linestyle='-', linewidth=2)
-        plt.title('USD Dönüştürülmüş Kapanış Fiyatları Grafiği', fontsize=16)
-        plt.xlabel('Tarih', fontsize=12)
-        plt.ylabel('USD Dönüştürülmüş Kapanış Fiyatları', fontsize=12)
-        plt.legend()
-        plt.grid(True, linestyle='--', alpha=0.7)
-
-        chart_canvas.draw()

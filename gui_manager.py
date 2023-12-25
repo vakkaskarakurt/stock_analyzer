@@ -46,6 +46,7 @@ class GUIManager:
         ttk.Label(self.root, text="Hisse Kodu:", font=('Helvetica', 12, 'bold')).grid(row=1, column=0, pady=10, sticky="e")
         self.stock_entry = ttk.Entry(self.root, font=('Helvetica', 12))
         self.stock_entry.grid(row=1, column=1, pady=10, sticky="nsew")
+        
 
     def create_date_entry(self, label_text, row):
         ttk.Label(self.root, text=label_text, font=('Helvetica', 12, 'bold')).grid(row=row, column=0, pady=10, sticky="e")
@@ -74,7 +75,7 @@ class GUIManager:
         self.progress_bar.grid(row=7, column=0, columnspan=8, pady=10, sticky="nsew")
 
     def create_generate_chart_button(self):
-        ttk.Button(self.root, text="Grafik Oluştur", command=self.generate_chart).grid(row=4, column=len(self.time_range_buttons), padx=10, pady=10, sticky="nsew")
+        ttk.Button(self.root, text="Grafik Oluştur", command=self.generate_chart_button_clicked).grid(row=4, column=len(self.time_range_buttons), padx=10, pady=10, sticky="nsew")
 
     def time_range_button_clicked(self, time_range):
         try:
@@ -82,10 +83,16 @@ class GUIManager:
         except StockAnalyzerError as e:
             self.show_error_message(f"Hata oluştu: {e}")
 
-    def generate_chart(self):
+    def generate_chart_button_clicked(self):
         try:
+            start_date = self.start_date_entry.get_date()
+            end_date = self.end_date_entry.get_date()
+            # print(start_date,end_date)
+
             analyzer = StockAnalyzer()
-            analyzer.generate_chart(self.stock_entry.get(), self.start_date_entry.get_date(), self.end_date_entry.get_date(), self.chart_canvas, self.progress_bar)
+            
+            analyzer.generate_chart(self.stock_entry.get(), start_date, end_date, self.chart_canvas, self.progress_bar)
+
         except StockAnalyzerError as e:
             self.show_error_message(f"Hata oluştu: {e}")
 
