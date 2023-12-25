@@ -1,5 +1,4 @@
 # main.py
-
 import tkinter as tk
 from gui_manager import GUIManager
 
