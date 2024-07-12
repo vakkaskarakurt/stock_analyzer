@@ -36,3 +36,6 @@ plt.legend()
 plt.xticks(rotation=45)
 plt.grid(True)
 plt.show()
+
+
+
