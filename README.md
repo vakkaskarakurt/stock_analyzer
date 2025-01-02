@@ -1,30 +1,32 @@
 # stock_analyzer
-Analyzing price changes of turkish stocks in dollar terms.
+Analyzing price changes of Turkish stocks in dollar terms.
 
-Clone:
-<pre>
-<code>
+## Clone:
+```bash
 git clone https://github.com/vakkaskarakurt/stock_analyzer
-</code>
-</pre>
+```
 
-Creating Enviroment:
-<pre>
-<code>
+## Creating Environment:
+```bash
 python -m venv stockenv
-</code>
-</pre>
+```
 
-Installing Requirements:
-<pre>
-<code>
+## Activate Environment:
+### On Windows:
+```bash
+stockenv\Scripts\activate
+```
+
+### On macOS/Linux:
+```bash
+source stockenv/bin/activate
+```
+
+## Installing Requirements:
+```bash
 pip install -r requirements.txt
-</code>
-</pre>
+```
 
-Run program:
-<pre>
-<code>
-python main.py 
-</code>
-</pre>
+## Run Program:
+```bash
+python main.py
