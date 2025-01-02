@@ -13,6 +13,11 @@ python -m venv stockenv
 
 ## Activate Environment:
 ### On Windows:
+If you encounter an error about script execution, run the following command in PowerShell (with Administrator privileges):
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+Then, activate the environment:
 ```bash
 stockenv\Scripts\activate
 ```
@@ -30,3 +35,4 @@ pip install -r requirements.txt
 ## Run Program:
 ```bash
 python main.py
+```
