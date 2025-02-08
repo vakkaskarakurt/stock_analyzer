@@ -7,6 +7,9 @@ from datetime import datetime
 from stock_analyzer import StockAnalyzer
 from custom_exceptions import StockAnalyzerError
 
+# import timedelta
+from datetime import timedelta
+
 class GUIManager:
     def __init__(self, root):
         self.root = root
@@ -16,24 +19,20 @@ class GUIManager:
         self.setup_grid()
 
     def setup_window(self):
-        self.root.title("BIST Hisse Senedi USD Analizi")
-        self.root.state('zoomed')  # Tam ekran başlat
-        self.root.minsize(1200, 800)  # Minimum pencere boyutu
+        self.root.title("BIST Hisse Senedi Analizi")
+        self.root.state('zoomed')
+        self.root.minsize(1200, 800)
 
     def create_frames(self):
-        # Ana frame
         self.main_frame = ttk.Frame(self.root)
         self.main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         
-        # Üst kontrol frame'i
         self.control_frame = ttk.Frame(self.main_frame)
         self.control_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
         
-        # Butonlar frame'i
         self.button_frame = ttk.Frame(self.main_frame)
         self.button_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
         
-        # Grafik frame'i
         self.chart_frame = ttk.Frame(self.main_frame)
         self.chart_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
 
@@ -43,11 +42,12 @@ class GUIManager:
         style.configure('Big.TButton', font=('Helvetica', 12))
         style.configure('Big.TLabel', font=('Helvetica', 14))
         style.configure('Title.TLabel', font=('Helvetica', 24, 'bold'))
+        style.configure('Big.TRadiobutton', font=('Helvetica', 12))
 
         # Başlık
         title_label = ttk.Label(self.control_frame, 
-                              text="BIST Hisse Senedi USD Analizi", 
-                              style='Title.TLabel')
+                                text="BIST Hisse Senedi Analizi", 
+                                style='Title.TLabel')
         title_label.grid(row=0, column=0, columnspan=4, pady=20)
 
         # Hisse kodu girişi
@@ -55,29 +55,56 @@ class GUIManager:
         stock_frame.grid(row=1, column=0, columnspan=4, pady=15)
         
         ttk.Label(stock_frame, text="Hisse Kodu:", 
-                 style='Big.TLabel').pack(side=tk.LEFT, padx=10)
+                    style='Big.TLabel').pack(side=tk.LEFT, padx=10)
         self.stock_entry = ttk.Entry(stock_frame, 
-                                   font=('Helvetica', 14), 
-                                   width=15)
+                                    font=('Helvetica', 14), 
+                                    width=15)
         self.stock_entry.pack(side=tk.LEFT, padx=10)
 
         # Tarih seçiciler
+        max_date = datetime.now()
+        end_date = max_date
+        start_date = end_date - timedelta(days=30)
+
         date_frame = ttk.Frame(self.control_frame)
         date_frame.grid(row=2, column=0, columnspan=4, pady=15)
         
         ttk.Label(date_frame, text="Başlangıç:", 
-                 style='Big.TLabel').pack(side=tk.LEFT, padx=10)
+                    style='Big.TLabel').pack(side=tk.LEFT, padx=10)
         self.start_date = DateEntry(date_frame, 
-                                  width=12, 
-                                  font=('Helvetica', 12))
+                                    width=12, 
+                                    font=('Helvetica', 12),
+                                    maxdate=max_date)
+        self.start_date.set_date(start_date)
         self.start_date.pack(side=tk.LEFT, padx=10)
         
         ttk.Label(date_frame, text="Bitiş:", 
-                 style='Big.TLabel').pack(side=tk.LEFT, padx=10)
+                    style='Big.TLabel').pack(side=tk.LEFT, padx=10)
         self.end_date = DateEntry(date_frame, 
                                 width=12, 
-                                font=('Helvetica', 12))
+                                font=('Helvetica', 12),
+                                maxdate=max_date)
+        self.end_date.set_date(end_date)
         self.end_date.pack(side=tk.LEFT, padx=10)
+
+        # Birim seçim çerçevesi
+        unit_frame = ttk.Frame(self.control_frame)
+        unit_frame.grid(row=3, column=0, columnspan=4, pady=15)
+        
+        ttk.Label(unit_frame, text="Birim:", 
+                    style='Big.TLabel').pack(side=tk.LEFT, padx=10)
+        
+        self.unit_var = tk.StringVar(value='USD')
+        ttk.Radiobutton(unit_frame, text="USD Bazlı", 
+                        variable=self.unit_var, value='USD',
+                        style='Big.TRadiobutton',
+                        command=lambda: self.update_chart(self.start_date.get_date(), 
+                                                        self.end_date.get_date())).pack(side=tk.LEFT, padx=10)
+        ttk.Radiobutton(unit_frame, text="Altın Bazlı", 
+                        variable=self.unit_var, value='GOLD',
+                        style='Big.TRadiobutton',
+                        command=lambda: self.update_chart(self.start_date.get_date(), 
+                                                        self.end_date.get_date())).pack(side=tk.LEFT, padx=10)
 
         # Hızlı tarih seçim butonları
         self.create_period_buttons()
@@ -103,7 +130,7 @@ class GUIManager:
             self.button_frame.grid_columnconfigure(i, weight=1)
 
     def create_chart_area(self):
-        self.fig, self.ax = plt.subplots(figsize=(14, 10))  # Figür boyutunu büyüttük
+        self.fig, self.ax = plt.subplots(figsize=(14, 10))
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.chart_frame)
         canvas_widget = self.canvas.get_tk_widget()
         canvas_widget.grid(row=0, column=0, sticky="nsew")
@@ -112,44 +139,28 @@ class GUIManager:
         self.chart_frame.grid_columnconfigure(0, weight=1)
 
     def setup_grid(self):
-        # Ana pencere grid yapılandırması
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
-        
-        # Ana frame grid yapılandırması
         self.main_frame.grid_rowconfigure(2, weight=1)
         self.main_frame.grid_columnconfigure(0, weight=1)
-        
-        # Pencere yeniden boyutlandırma olayını bağla
         self.root.bind('<Configure>', self.on_window_resize)
 
     def on_window_resize(self, event):
         if hasattr(self, 'canvas'):
-            # Minimum boyutlar
-            min_width = 10
-            min_height = 6
-            
-            # Mevcut frame boyutlarını al
-            width = max(min_width, self.chart_frame.winfo_width() / 100)
-            height = max(min_height, self.chart_frame.winfo_height() / 100)
-            
-            # Grafik boyutunu güncelle
+            width = max(10, self.chart_frame.winfo_width() / 100)
+            height = max(6, self.chart_frame.winfo_height() / 100)
             self.fig.set_size_inches(width, height)
-            
-            # Grafik başlık ve etiket boyutlarını güncelle
             self.update_chart_fonts()
-            
             self.canvas.draw()
 
     def update_chart_fonts(self):
-        # Grafik başlık ve etiketlerinin font boyutlarını güncelle
         if hasattr(self, 'ax'):
             width = self.chart_frame.winfo_width()
-            scale_factor = width / 1000  # Baz genişlik 1000 pixel
+            scale_factor = width / 1000
             
-            title_size = max(16, int(16 * scale_factor))
-            label_size = max(12, int(12 * scale_factor))
-            tick_size = max(10, int(10 * scale_factor))
+            title_size = max(24, int(24 * scale_factor))
+            label_size = max(20, int(20 * scale_factor))
+            tick_size = max(16, int(16 * scale_factor))
             
             title_obj = self.ax.get_title()
             if title_obj:
@@ -177,30 +188,76 @@ class GUIManager:
     def update_chart(self, start_date, end_date):
         try:
             stock_code = self.stock_entry.get().upper()
-            data = StockAnalyzer.get_stock_data(stock_code, start_date, end_date)
+            
+            if isinstance(start_date, str):
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            if isinstance(end_date, str):
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
+                
+            if hasattr(start_date, 'strftime'):
+                start_date = datetime.combine(start_date, datetime.min.time())
+            if hasattr(end_date, 'strftime'):
+                end_date = datetime.combine(end_date, datetime.min.time())
+
+            base_unit = self.unit_var.get()
+            data = StockAnalyzer.get_stock_data(stock_code, start_date, end_date, base_unit)
             
             self.ax.clear()
-            self.ax.plot(data.index, data['Stock Price (USD)'], 
-                        label=f'{stock_code} (USD)', 
-                        color='#2196F3', 
+            
+            if base_unit == 'GOLD':
+                y_data = data['Stock Price (GOLD)']
+                label = f'{stock_code} (Ons Altın)'
+                ylabel = 'Ons Altın Değeri'
+            else:
+                y_data = data['Stock Price (USD)']
+                label = f'{stock_code} (USD)'
+                ylabel = 'USD Değeri'
+            
+            # Başlangıç ve bitiş değerlerini al
+            first_value = y_data.iloc[0]
+            last_value = y_data.iloc[-1]
+            
+            # Yüzde değişimi hesapla
+            percent_change = ((last_value - first_value) / first_value) * 100
+            
+            # Grafik başlığını yüzde değişim ile güncelle
+            title = f'{stock_code} Hisse Senedi {ylabel}\n'
+            title += f'Değişim: %{percent_change:.2f} '
+            title += '📈' if percent_change > 0 else '📉'
+            
+            self.ax.plot(data.index, y_data, 
+                        label=label, 
+                        color='#2196F3' if percent_change >= 0 else '#f44336', 
                         linewidth=2)
             
-            # Font boyutlarını büyüttük
-            self.ax.set_title(f'{stock_code} Hisse Senedi USD Değeri', 
+            self.ax.set_title(title, 
                             pad=20, 
-                            fontsize=24)  # Başlık boyutu 24pt
-            self.ax.set_xlabel('Tarih', fontsize=20)  # X ekseni etiketi 20pt
-            self.ax.set_ylabel('USD Değeri', fontsize=20)  # Y ekseni etiketi 20pt
+                            fontsize=24)
+            self.ax.set_xlabel('Tarih', fontsize=20)
+            self.ax.set_ylabel(ylabel, fontsize=20)
             self.ax.grid(True, linestyle='--', alpha=0.7)
-            self.ax.legend(fontsize=18)  # Legend boyutu 18pt
+            self.ax.legend(fontsize=18)
             
-            # Eksen değerlerinin boyutunu artır
-            self.ax.tick_params(axis='both', which='major', labelsize=16)  # Eksen değerleri 16pt
+            # Başlangıç ve bitiş değerlerini grafik üzerinde göster
+            self.ax.annotate(f'Başlangıç: {first_value:.2f}',
+                            xy=(data.index[0], first_value),
+                            xytext=(10, 10),
+                            textcoords='offset points',
+                            fontsize=12)
+            
+            self.ax.annotate(f'Bitiş: {last_value:.2f}',
+                            xy=(data.index[-1], last_value),
+                            xytext=(-10, 10),
+                            textcoords='offset points',
+                            ha='right',
+                            fontsize=12)
+            
+            self.ax.tick_params(axis='both', which='major', labelsize=16)
             plt.setp(self.ax.get_xticklabels(), rotation=45)
             
             self.fig.tight_layout()
             self.canvas.draw()
-            
+                
         except StockAnalyzerError as e:
             messagebox.showerror("Hata", str(e))
         except Exception as e:

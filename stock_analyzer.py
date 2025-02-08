@@ -6,40 +6,53 @@ from custom_exceptions import StockAnalyzerError
 
 class StockAnalyzer:
     @staticmethod
-    def get_stock_data(stock_code, start_date, end_date):
+    def get_stock_data(stock_code, start_date, end_date, base='USD'):
         try:
+            # Veri çekme işlemi
             stock = yf.download(f"{stock_code}.IS", start=start_date, end=end_date)
-            currency = yf.download("TRYUSD=X", start=start_date, end=end_date)
+            try:
+                # TRY=X ile dolar kurunu al
+                usd = yf.download("TRY=X", start=start_date, end=end_date)
+            except:
+                # Başarısız olursa USDTRY=X'i dene
+                try:
+                    usd = yf.download("USDTRY=X", start=start_date, end=end_date)
+                except:
+                    # O da başarısız olursa TRYUSD=X'i dene ve tersini al
+                    usd_temp = yf.download("TRYUSD=X", start=start_date, end=end_date)
+                    usd = pd.DataFrame()
+                    usd['Close'] = 1 / usd_temp['Close']  # TL/USD değerini USD/TL'ye çevir
             
-            if stock.empty or currency.empty:
-                raise StockAnalyzerError("Veri bulunamadı")
+            if base == 'GOLD':
+                gold = yf.download("GC=F", start=start_date, end=end_date)
                 
-            df = pd.DataFrame()
-            df['Stock Price (TRY)'] = stock['Close']
-            df['USD/TRY'] = currency['Close']
-            df['Stock Price (USD)'] = df['Stock Price (TRY)'] / df['USD/TRY']
-            
-            return df
-            
+                df = pd.DataFrame()
+                df['Stock Price (TRY)'] = stock['Close']
+                df['USD/TRY'] = usd['Close']
+                df['Gold (USD/Ounce)'] = gold['Close']
+                
+                # NaN değeri olan satırları sil
+                df = df.dropna()
+                
+                # Altın bazlı değeri hesapla
+                df['Stock Price (GOLD)'] = (df['Stock Price (TRY)'] / df['USD/TRY']) / df['Gold (USD/Ounce)']
+                
+                return df
+            else:
+                df = pd.DataFrame()
+                df['Stock Price (TRY)'] = stock['Close']
+                df['USD/TRY'] = usd['Close']
+                
+                # NaN değeri olan satırları sil
+                df = df.dropna()
+                
+                # USD değerini hesapla
+                df['Stock Price (USD)'] = df['Stock Price (TRY)'] / df['USD/TRY']
+                
+                return df
+                
         except Exception as e:
             raise StockAnalyzerError(f"Veri çekme hatası: {str(e)}")
-
-    @staticmethod
-    def create_plot(data, stock_code):
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(data.index, data['Stock Price (USD)'], label=f'{stock_code} (USD)', 
-                color='#2196F3', linewidth=2)
-        
-        ax.set_title(f'{stock_code} Hisse Senedi USD Değeri', pad=20)
-        ax.set_xlabel('Tarih')
-        ax.set_ylabel('USD Değeri')
-        ax.grid(True, linestyle='--', alpha=0.7)
-        ax.legend()
-        
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        
-        return fig
 
     @staticmethod
     def get_time_delta(period):
