@@ -1,107 +1,207 @@
-# gui_manager.py
-
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from stock_analyzer import StockAnalyzer, StockAnalyzerError
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
+from datetime import datetime
+from stock_analyzer import StockAnalyzer
+from custom_exceptions import StockAnalyzerError
 
 class GUIManager:
-    WINDOW_DIMENSIONS = "800x1080"
-    MIN_WINDOW_SIZE = (800, 1080)
-
     def __init__(self, root):
         self.root = root
-        root.title("USD Cinsinden Türk Hisseleri")
-        self.set_window_properties()
+        self.setup_window()
+        self.create_frames()
         self.create_widgets()
+        self.setup_grid()
 
-    def set_window_properties(self):
-        self.root.geometry(self.WINDOW_DIMENSIONS)
-        self.root.minsize(*self.MIN_WINDOW_SIZE)
-        self.root.resizable(True, True)
+    def setup_window(self):
+        self.root.title("BIST Hisse Senedi USD Analizi")
+        self.root.state('zoomed')  # Tam ekran başlat
+        self.root.minsize(1200, 800)  # Minimum pencere boyutu
+
+    def create_frames(self):
+        # Ana frame
+        self.main_frame = ttk.Frame(self.root)
+        self.main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        
+        # Üst kontrol frame'i
+        self.control_frame = ttk.Frame(self.main_frame)
+        self.control_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        
+        # Butonlar frame'i
+        self.button_frame = ttk.Frame(self.main_frame)
+        self.button_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+        
+        # Grafik frame'i
+        self.chart_frame = ttk.Frame(self.main_frame)
+        self.chart_frame.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
 
     def create_widgets(self):
-        self.create_title_label()
-        self.create_stock_entry()
-        self.start_date_entry = self.create_date_entry("Başlangıç Tarihi:", 2)
-        self.end_date_entry = self.create_date_entry("Bitiş Tarihi:", 3)
-        self.create_time_range_buttons(['1 Hafta', '1 Ay', '3 Ay', '6 Ay', '1 Yıl', '3 Yıl', '5 Yıl', '10 Yıl'])
-        self.create_result_text()
-        self.create_chart_canvas()
-        self.create_progress_bar()
-        self.create_generate_chart_button()
+        # Stil ayarları
+        style = ttk.Style()
+        style.configure('Big.TButton', font=('Helvetica', 12))
+        style.configure('Big.TLabel', font=('Helvetica', 14))
+        style.configure('Title.TLabel', font=('Helvetica', 24, 'bold'))
 
-        self.configure_grid()
+        # Başlık
+        title_label = ttk.Label(self.control_frame, 
+                              text="BIST Hisse Senedi USD Analizi", 
+                              style='Title.TLabel')
+        title_label.grid(row=0, column=0, columnspan=4, pady=20)
 
-    def configure_grid(self):
-        for i in range(8):
-            self.root.grid_rowconfigure(i, weight=1)
-            self.root.grid_columnconfigure(i, weight=1)
-
-    def create_title_label(self):
-        title_label = ttk.Label(self.root, text="USD Cinsinden Türk Hisseleri", font=('Helvetica', 16, 'bold'))
-        title_label.grid(row=0, column=0, columnspan=8, pady=20, sticky="nsew")
-
-    def create_stock_entry(self):
-        ttk.Label(self.root, text="Hisse Kodu:", font=('Helvetica', 12, 'bold')).grid(row=1, column=0, pady=10, sticky="e")
-        self.stock_entry = ttk.Entry(self.root, font=('Helvetica', 12))
-        self.stock_entry.grid(row=1, column=1, pady=10, sticky="nsew")
+        # Hisse kodu girişi
+        stock_frame = ttk.Frame(self.control_frame)
+        stock_frame.grid(row=1, column=0, columnspan=4, pady=15)
         
+        ttk.Label(stock_frame, text="Hisse Kodu:", 
+                 style='Big.TLabel').pack(side=tk.LEFT, padx=10)
+        self.stock_entry = ttk.Entry(stock_frame, 
+                                   font=('Helvetica', 14), 
+                                   width=15)
+        self.stock_entry.pack(side=tk.LEFT, padx=10)
 
-    def create_date_entry(self, label_text, row):
-        ttk.Label(self.root, text=label_text, font=('Helvetica', 12, 'bold')).grid(row=row, column=0, pady=10, sticky="e")
-        date_entry = DateEntry(self.root, width=12, background='darkblue', foreground='white', borderwidth=2)
-        date_entry.grid(row=row, column=1, pady=10, sticky="nsew")
-        return date_entry
+        # Tarih seçiciler
+        date_frame = ttk.Frame(self.control_frame)
+        date_frame.grid(row=2, column=0, columnspan=4, pady=15)
+        
+        ttk.Label(date_frame, text="Başlangıç:", 
+                 style='Big.TLabel').pack(side=tk.LEFT, padx=10)
+        self.start_date = DateEntry(date_frame, 
+                                  width=12, 
+                                  font=('Helvetica', 12))
+        self.start_date.pack(side=tk.LEFT, padx=10)
+        
+        ttk.Label(date_frame, text="Bitiş:", 
+                 style='Big.TLabel').pack(side=tk.LEFT, padx=10)
+        self.end_date = DateEntry(date_frame, 
+                                width=12, 
+                                font=('Helvetica', 12))
+        self.end_date.pack(side=tk.LEFT, padx=10)
 
-    def create_time_range_buttons(self, button_texts):
-        self.time_range_buttons = [ttk.Button(self.root, text=text, command=lambda text=text: self.time_range_button_clicked(text), style='TButton') for text in button_texts]
+        # Hızlı tarih seçim butonları
+        self.create_period_buttons()
 
-        for i, button in enumerate(self.time_range_buttons):
-            button.grid(row=4, column=i, padx=10, pady=10, sticky="nsew")
+        # Grafik alanı
+        self.create_chart_area()
 
-    def create_result_text(self):
-        self.result_text_widget = tk.Text(self.root, height=15, width=60, state=tk.DISABLED)
-        self.result_text_widget.grid(row=5, column=0, columnspan=8, pady=10, sticky="nsew")
+        # İlerleme çubuğu
+        self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate')
+        self.progress.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
 
-    def create_chart_canvas(self):
-        fig, ax = plt.subplots(figsize=(10, 4))
-        self.chart_canvas = FigureCanvasTkAgg(fig, master=self.root)
-        self.chart_widget = self.chart_canvas.get_tk_widget()
-        self.chart_widget.grid(row=6, column=0, columnspan=8, pady=10, padx=10, sticky="nsew")
+    def create_period_buttons(self):
+        periods = ['1 Hafta', '1 Ay', '3 Ay', '6 Ay', '1 Yıl', 
+                  '3 Yıl', '5 Yıl', '10 Yıl']
+        
+        for i, period in enumerate(periods):
+            btn = ttk.Button(self.button_frame, 
+                           text=period,
+                           command=lambda p=period: self.update_chart_for_period(p),
+                           style='Big.TButton',
+                           width=15)
+            btn.grid(row=0, column=i, padx=5, pady=10, ipadx=10, ipady=5)
+            self.button_frame.grid_columnconfigure(i, weight=1)
 
-    def create_progress_bar(self):
-        self.progress_bar = ttk.Progressbar(self.root, mode='determinate', length=200)
-        self.progress_bar.grid(row=7, column=0, columnspan=8, pady=10, sticky="nsew")
+    def create_chart_area(self):
+        self.fig, self.ax = plt.subplots(figsize=(14, 10))  # Figür boyutunu büyüttük
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.chart_frame)
+        canvas_widget = self.canvas.get_tk_widget()
+        canvas_widget.grid(row=0, column=0, sticky="nsew")
+        
+        self.chart_frame.grid_rowconfigure(0, weight=1)
+        self.chart_frame.grid_columnconfigure(0, weight=1)
 
-    def create_generate_chart_button(self):
-        ttk.Button(self.root, text="Grafik Oluştur", command=self.generate_chart_button_clicked).grid(row=4, column=len(self.time_range_buttons), padx=10, pady=10, sticky="nsew")
+    def setup_grid(self):
+        # Ana pencere grid yapılandırması
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        
+        # Ana frame grid yapılandırması
+        self.main_frame.grid_rowconfigure(2, weight=1)
+        self.main_frame.grid_columnconfigure(0, weight=1)
+        
+        # Pencere yeniden boyutlandırma olayını bağla
+        self.root.bind('<Configure>', self.on_window_resize)
 
-    def time_range_button_clicked(self, time_range):
-        try:
-            StockAnalyzer.time_range_button_clicked(self.stock_entry, self.result_text_widget, self.chart_canvas, self.progress_bar, time_range)
-        except StockAnalyzerError as e:
-            self.show_error_message(f"Hata oluştu: {e}")
-
-    def generate_chart_button_clicked(self):
-        try:
-            start_date = self.start_date_entry.get_date()
-            end_date = self.end_date_entry.get_date()
-            # print(start_date,end_date)
-
-            analyzer = StockAnalyzer()
+    def on_window_resize(self, event):
+        if hasattr(self, 'canvas'):
+            # Minimum boyutlar
+            min_width = 10
+            min_height = 6
             
-            analyzer.generate_chart(self.stock_entry.get(), start_date, end_date, self.chart_canvas, self.progress_bar)
+            # Mevcut frame boyutlarını al
+            width = max(min_width, self.chart_frame.winfo_width() / 100)
+            height = max(min_height, self.chart_frame.winfo_height() / 100)
+            
+            # Grafik boyutunu güncelle
+            self.fig.set_size_inches(width, height)
+            
+            # Grafik başlık ve etiket boyutlarını güncelle
+            self.update_chart_fonts()
+            
+            self.canvas.draw()
 
+    def update_chart_fonts(self):
+        # Grafik başlık ve etiketlerinin font boyutlarını güncelle
+        if hasattr(self, 'ax'):
+            width = self.chart_frame.winfo_width()
+            scale_factor = width / 1000  # Baz genişlik 1000 pixel
+            
+            title_size = max(16, int(16 * scale_factor))
+            label_size = max(12, int(12 * scale_factor))
+            tick_size = max(10, int(10 * scale_factor))
+            
+            title_obj = self.ax.get_title()
+            if title_obj:
+                self.ax.set_title(title_obj, fontsize=title_size)
+            
+            self.ax.set_xlabel(self.ax.get_xlabel(), fontsize=label_size)
+            self.ax.set_ylabel(self.ax.get_ylabel(), fontsize=label_size)
+            self.ax.tick_params(axis='both', which='major', labelsize=tick_size)
+
+    def update_chart_for_period(self, period):
+        if not self.stock_entry.get():
+            messagebox.showerror("Hata", "Lütfen bir hisse kodu girin")
+            return
+
+        try:
+            self.progress.start()
+            end_date = datetime.now()
+            start_date = end_date - StockAnalyzer.get_time_delta(period)
+            self.update_chart(start_date, end_date)
+        except Exception as e:
+            messagebox.showerror("Hata", str(e))
+        finally:
+            self.progress.stop()
+
+    def update_chart(self, start_date, end_date):
+        try:
+            stock_code = self.stock_entry.get().upper()
+            data = StockAnalyzer.get_stock_data(stock_code, start_date, end_date)
+            
+            self.ax.clear()
+            self.ax.plot(data.index, data['Stock Price (USD)'], 
+                        label=f'{stock_code} (USD)', 
+                        color='#2196F3', 
+                        linewidth=2)
+            
+            # Font boyutlarını büyüttük
+            self.ax.set_title(f'{stock_code} Hisse Senedi USD Değeri', 
+                            pad=20, 
+                            fontsize=24)  # Başlık boyutu 24pt
+            self.ax.set_xlabel('Tarih', fontsize=20)  # X ekseni etiketi 20pt
+            self.ax.set_ylabel('USD Değeri', fontsize=20)  # Y ekseni etiketi 20pt
+            self.ax.grid(True, linestyle='--', alpha=0.7)
+            self.ax.legend(fontsize=18)  # Legend boyutu 18pt
+            
+            # Eksen değerlerinin boyutunu artır
+            self.ax.tick_params(axis='both', which='major', labelsize=16)  # Eksen değerleri 16pt
+            plt.setp(self.ax.get_xticklabels(), rotation=45)
+            
+            self.fig.tight_layout()
+            self.canvas.draw()
+            
         except StockAnalyzerError as e:
-            self.show_error_message(f"Hata oluştu: {e}")
-
-    def show_error_message(self, message):
-        print(message)
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = GUIManager(root)
-    root.mainloop()
+            messagebox.showerror("Hata", str(e))
+        except Exception as e:
+            messagebox.showerror("Hata", f"Beklenmeyen bir hata oluştu: {str(e)}")

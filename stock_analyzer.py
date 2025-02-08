@@ -1,85 +1,56 @@
-# stock_analyzer.py
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
-import tkinter as tk
 from custom_exceptions import StockAnalyzerError
 
 class StockAnalyzer:
     @staticmethod
-    def get_price_data(stock_code, currency_code, start_date, end_date):
+    def get_stock_data(stock_code, start_date, end_date):
         try:
-            stock_data = yf.download(stock_code, start_date, end_date)
-            currency_data = yf.download(currency_code, start_date, end_date)
-
-            merged_data = pd.merge(stock_data['Close'], currency_data['Close'], left_index=True, right_index=True, suffixes=(' (' + stock_code + '/TL)', ' (TL/USD)'))
-            merged_data['Close (USD)'] = merged_data['Close (' + stock_code + '/TL)'] * merged_data['Close (TL/USD)']
-
-            return merged_data
+            stock = yf.download(f"{stock_code}.IS", start=start_date, end=end_date)
+            currency = yf.download("TRYUSD=X", start=start_date, end=end_date)
+            
+            if stock.empty or currency.empty:
+                raise StockAnalyzerError("Veri bulunamadı")
+                
+            df = pd.DataFrame()
+            df['Stock Price (TRY)'] = stock['Close']
+            df['USD/TRY'] = currency['Close']
+            df['Stock Price (USD)'] = df['Stock Price (TRY)'] / df['USD/TRY']
+            
+            return df
+            
         except Exception as e:
-            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
+            raise StockAnalyzerError(f"Veri çekme hatası: {str(e)}")
 
     @staticmethod
-    def determine_time_range(end_date, time_range):
-        if time_range == '1 Hafta':
-            return end_date - timedelta(days=7)
-        elif time_range == '1 Ay':
-            return end_date - timedelta(days=30)
-        elif time_range == '3 Ay':
-            return end_date - timedelta(days=90)
-        elif time_range == '6 Ay':
-            return end_date - timedelta(days=180)
-        elif time_range == '1 Yıl':
-            return end_date - timedelta(days=365)
-        elif time_range == '3 Yıl':
-            return end_date - timedelta(days=365*3)
-        elif time_range == '5 Yıl':
-            return end_date - timedelta(days=365*5)
-        elif time_range == '10 Yıl':
-            return end_date - timedelta(days=365*10)
+    def create_plot(data, stock_code):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(data.index, data['Stock Price (USD)'], label=f'{stock_code} (USD)', 
+                color='#2196F3', linewidth=2)
+        
+        ax.set_title(f'{stock_code} Hisse Senedi USD Değeri', pad=20)
+        ax.set_xlabel('Tarih')
+        ax.set_ylabel('USD Değeri')
+        ax.grid(True, linestyle='--', alpha=0.7)
+        ax.legend()
+        
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        
+        return fig
 
     @staticmethod
-    def generate_chart(stock_code, start_date, end_date, chart_canvas, progress_bar):
-        try:
-            stock_code = stock_code + ".IS"
-            stock_data = StockAnalyzer.get_price_data(stock_code, "TRYUSD=X", start_date, end_date)
-
-            plt.clf()
-            plt.plot(stock_data.index, stock_data['Close (USD)'], label='Çarpılmış Kapanış Fiyatları', color='#4CAF50', linestyle='-', linewidth=2)
-            plt.title('USD Dönüştürülmüş Kapanış Fiyatları Grafiği', fontsize=16)
-            plt.xlabel('Tarih', fontsize=12)
-            plt.ylabel('USD Dönüştürülmüş Kapanış Fiyatları', fontsize=12)
-            plt.legend()
-            plt.grid(True, linestyle='--', alpha=0.7)
-
-            chart_canvas.draw()
-
-        except StockAnalyzerError as e:
-            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
-        finally:
-            progress_bar.stop()
-
-    @staticmethod
-    def time_range_button_clicked(stock_entry, result_text, chart_canvas, progress_bar, time_range):
-        if not stock_entry.get():
-            raise StockAnalyzerError("Lütfen bir hisse senedi kodu girin.")
-
-        try:
-            progress_bar.start()
-            end_date = datetime.now()
-            start_date = StockAnalyzer.determine_time_range(end_date, time_range)
-            stock_code = stock_entry.get()
-            StockAnalyzer.generate_chart(stock_code, start_date, end_date, chart_canvas, progress_bar)
-        except StockAnalyzerError as e:
-            raise StockAnalyzerError(f"Veri çekme veya analiz hatası: {e}")
-        finally:
-            progress_bar.stop()
-    
-    @staticmethod
-    def update_result_text(result_text, result_data):
-        result_text.config(state=tk.NORMAL)
-        result_text.delete(1.0, tk.END)
-        result_text.insert(tk.END, str(result_data))
-        result_text.config(state=tk.DISABLED)
-        result_text.see(tk.END)
+    def get_time_delta(period):
+        time_deltas = {
+            '1 Hafta': timedelta(days=7),
+            '1 Ay': timedelta(days=30),
+            '3 Ay': timedelta(days=90),
+            '6 Ay': timedelta(days=180),
+            '1 Yıl': timedelta(days=365),
+            '3 Yıl': timedelta(days=365*3),
+            '5 Yıl': timedelta(days=365*5),
+            '10 Yıl': timedelta(days=365*10)
+        }
+        return time_deltas.get(period, timedelta(days=30))

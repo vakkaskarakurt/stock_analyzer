@@ -1,3 +1,2 @@
 class StockAnalyzerError(Exception):
     pass
-
