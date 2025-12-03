@@ -1,2 +1,0 @@
-class StockAnalyzerError(Exception):
-    pass

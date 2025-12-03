@@ -29,3 +29,9 @@ stockenv
 Thumbs.db
 
 sonuc.txt
+
+# cache files
+.cache/
+cache
+cache/
+*.pkl
