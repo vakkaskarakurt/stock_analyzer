@@ -1,0 +1,260 @@
+<div class="container-fluid bg-dark text-light min-vh-100 p-0 font-sans">
+  <!-- Header -->
+  <header class="bg-black py-3 px-4 shadow-lg border-bottom border-secondary sticky-top z-3">
+    <div class="container d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-graph-up-arrow text-info fs-4"></i>
+        <h1 class="h4 m-0 fw-bold tracking-tight">BIST <span class="text-info">ANALYZER</span></h1>
+      </div>
+      <div class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary fw-normal px-3 py-2">
+        v2.0 Beta
+      </div>
+    </div>
+  </header>
+
+  <div class="container py-5">
+    
+    <!-- Hero / Controls Section -->
+    <div class="row justify-content-center mb-5">
+      <div class="col-lg-10">
+        <div class="card bg-black border-secondary shadow-lg overflow-hidden">
+          <div class="card-body p-4 p-lg-5">
+            <h5 class="text-white mb-4 fw-light border-bottom border-secondary pb-2">Hızlı Analiz</h5>
+            
+            <div class="row g-3 align-items-end">
+              <!-- Hisse Input -->
+              <div class="col-md-3">
+                <label class="form-label small text-secondary fw-bold text-uppercase">Hisse Kodu</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-dark border-secondary text-secondary"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control bg-dark border-secondary text-white fw-bold" 
+                         [(ngModel)]="symbol" placeholder="THYAO" (keyup.enter)="analyze()">
+                </div>
+              </div>
+              
+              <!-- Birim Seçimi -->
+              <div class="col-md-3">
+                <label class="form-label small text-secondary fw-bold text-uppercase">Para Birimi</label>
+                <select class="form-select bg-dark border-secondary text-white" [(ngModel)]="unit">
+                  <option value="USD">🇺🇸 USD (Dolar)</option>
+                  <option value="GOLD">🥇 GOLD (Altın)</option>
+                  <option value="TRY">🇹🇷 TRY (TL)</option>
+                </select>
+              </div>
+
+              <!-- Tarih Aralığı -->
+              <div class="col-md-3">
+                <label class="form-label small text-secondary fw-bold text-uppercase">Tarih Aralığı</label>
+                <div class="d-flex gap-1">
+                   <button class="btn btn-outline-secondary btn-sm flex-fill" (click)="setPeriod(6)">6 Ay</button>
+                   <button class="btn btn-outline-secondary btn-sm flex-fill active" (click)="setPeriod(12)">1 Yıl</button>
+                   <button class="btn btn-outline-secondary btn-sm flex-fill" (click)="setPeriod(36)">3 Yıl</button>
+                </div>
+              </div>
+
+              <!-- Aksiyon Butonları -->
+              <div class="col-md-3 d-grid gap-2">
+                <button class="btn btn-info fw-bold py-2 shadow-info" (click)="analyze()" [disabled]="loading || !symbol">
+                  <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                  {{ loading ? 'Analiz Ediliyor...' : 'ANALİZ ET' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Altın Liderleri Butonu -->
+            <div class="mt-4 pt-3 border-top border-secondary d-flex justify-content-between align-items-center">
+               <span class="text-secondary small">
+                 <i class="bi bi-info-circle me-1"></i> BIST 30 hisselerini altın bazında karşılaştırın.
+               </span>
+               <button class="btn btn-outline-warning btn-sm fw-bold px-4 rounded-pill hover-scale" (click)="loadLeaders()">
+                  <i class="bi bi-trophy-fill me-2"></i> ALTIN KRALLARI (BIST 30)
+               </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Alert -->
+    <div *ngIf="error" class="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger d-flex align-items-center shadow-sm mb-4">
+      <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i> 
+      <div>{{ error }}</div>
+    </div>
+
+    <!-- LEADERBOARD SECTION (Kart Tasarımı) -->
+    <div *ngIf="showLeaders" class="animate-fade-in mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-warning m-0"><i class="bi bi-award me-2"></i>Altın Bazlı Kazandıranlar</h3>
+            <button class="btn btn-sm btn-dark border-secondary rounded-circle" (click)="showLeaders = false"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="loadingLeaders" class="text-center py-5">
+            <div class="spinner-grow text-warning mb-3" style="width: 3rem; height: 3rem;"></div>
+            <h5 class="text-white fw-light">Piyasa verileri taranıyor...</h5>
+            <div class="progress mt-3 mx-auto" style="width: 200px; height: 4px;">
+              <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+            </div>
+        </div>
+
+        <!-- Top 3 Cards -->
+        <div *ngIf="!loadingLeaders && topPerformers.length > 0" class="row g-4 mb-4">
+            <!-- 2. GÜMÜŞ -->
+            <div class="col-md-4 order-2 order-md-1 mt-md-5">
+                <div class="card bg-dark border-secondary h-100 shadow hover-lift">
+                   <div class="card-body text-center position-relative overflow-hidden">
+                      <div class="position-absolute top-0 start-50 translate-middle-x bg-secondary text-white px-3 py-1 rounded-bottom fw-bold shadow-sm" style="font-size: 0.8rem;">#2 GÜMÜŞ</div>
+                      <h2 class="display-4 fw-bold text-white mt-4 mb-0">{{ topPerformers[1].symbol }}</h2>
+                      <div class="text-secondary small mb-3">BIST 30</div>
+                      <div class="badge bg-success bg-opacity-25 text-success fs-5 px-3 py-2 border border-success mb-3">
+                        <i class="bi bi-arrow-up-right me-1"></i> %{{ topPerformers[1].changePercentage | number:'1.0-2' }}
+                      </div>
+                      <div class="text-secondary small">Yıllık Altın Bazlı Getiri</div>
+                   </div>
+                </div>
+            </div>
+
+            <!-- 1. ALTIN (Şampiyon) -->
+            <div class="col-md-4 order-1 order-md-2">
+                <div class="card bg-black border-warning h-100 shadow-lg scale-up position-relative">
+                   <div class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark shadow border border-light p-2">
+                      <i class="bi bi-trophy-fill fs-5"></i>
+                   </div>
+                   <div class="card-body text-center py-5">
+                      <div class="text-warning fw-bold small letter-spacing-2 mb-2">ŞAMPİYON</div>
+                      <h1 class="display-1 fw-bold text-white mb-0 text-glow">{{ topPerformers[0].symbol }}</h1>
+                      <div class="text-secondary mb-4">Lider Hisse</div>
+                      <div class="badge bg-warning text-dark fs-3 px-4 py-2 shadow fw-bold mb-3">
+                        %{{ topPerformers[0].changePercentage | number:'1.0-2' }}
+                      </div>
+                      <div class="text-light small opacity-75">Yıllık Altın Bazlı Getiri</div>
+                   </div>
+                </div>
+            </div>
+
+            <!-- 3. BRONZ -->
+            <div class="col-md-4 order-3 order-md-3 mt-md-5">
+                <div class="card bg-dark border-secondary h-100 shadow hover-lift">
+                   <div class="card-body text-center position-relative">
+                      <div class="position-absolute top-0 start-50 translate-middle-x bg-brown text-white px-3 py-1 rounded-bottom fw-bold shadow-sm" style="background-color: #cd7f32; font-size: 0.8rem;">#3 BRONZ</div>
+                      <h2 class="display-4 fw-bold text-white mt-4 mb-0">{{ topPerformers[2].symbol }}</h2>
+                      <div class="text-secondary small mb-3">BIST 30</div>
+                      <div class="badge bg-success bg-opacity-25 text-success fs-5 px-3 py-2 border border-success mb-3">
+                        <i class="bi bi-arrow-up-right me-1"></i> %{{ topPerformers[2].changePercentage | number:'1.0-2' }}
+                      </div>
+                      <div class="text-secondary small">Yıllık Altın Bazlı Getiri</div>
+                   </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- The Rest (Table) -->
+        <div *ngIf="!loadingLeaders && topPerformers.length > 3" class="card bg-dark border-secondary shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <thead class="bg-black">
+                            <tr class="text-secondary text-uppercase small">
+                                <th class="ps-4 py-3">Sıra</th>
+                                <th class="py-3">Hisse</th>
+                                <th class="text-end py-3 pe-4">Değişim (Altın)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let item of topPerformers | slice:3; let i = index">
+                                <td class="ps-4 text-secondary font-monospace">{{ i + 4 }}</td>
+                                <td class="fw-bold text-white">{{ item.symbol }}</td>
+                                <td class="text-end pe-4">
+                                    <span class="fw-bold" [ngClass]="item.changePercentage >= 0 ? 'text-success' : 'text-danger'">
+                                        {{ item.changePercentage | number:'1.2-2' }}%
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SINGLE STOCK CHART -->
+    <div class="row" *ngIf="!showLeaders">
+      <div class="col-lg-12">
+        <div class="card bg-black border-secondary shadow-lg h-100" style="min-height: 550px;">
+          <!-- Chart Header -->
+          <div class="card-header bg-transparent border-secondary py-3 px-4 d-flex justify-content-between align-items-center">
+            <div>
+                 <h5 class="m-0 fw-bold text-white" *ngIf="result">
+                  {{ result.symbol }} <span class="text-secondary mx-2">/</span> {{ result.unit }}
+                </h5>
+                <h5 class="m-0 text-secondary fw-normal" *ngIf="!result">Analiz Sonucu Bekleniyor</h5>
+            </div>
+            
+            <div *ngIf="result" class="d-flex align-items-center gap-3">
+                 <div class="text-end">
+                     <div class="small text-secondary text-uppercase">Toplam Değişim</div>
+                     <div class="fw-bold fs-5" [ngClass]="result.changePercentage >= 0 ? 'text-success' : 'text-danger'">
+                         %{{ result.changePercentage | number:'1.2-2' }}
+                     </div>
+                 </div>
+            </div>
+          </div>
+
+          <!-- Chart Body -->
+          <div class="card-body p-4 position-relative">
+            <div *ngIf="loading" class="position-absolute top-50 start-50 translate-middle text-info text-center">
+              <div class="spinner-border mb-3" style="width: 3rem; height: 3rem;"></div>
+              <div class="small animate-pulse">Veriler işleniyor...</div>
+            </div>
+            
+            <div class="chart-container" style="position: relative; height: 450px; width: 100%">
+                <canvas baseChart *ngIf="result"
+                        [data]="lineChartData"
+                        [options]="lineChartOptions"
+                        [type]="'line'">
+                </canvas>
+            </div>
+
+            <!-- Empty State -->
+            <div *ngIf="!result && !loading" class="h-100 d-flex flex-column align-items-center justify-content-center text-secondary opacity-25 py-5">
+              <i class="bi bi-bar-chart-line display-1 mb-4"></i>
+              <p class="fs-5">Hisse kodunu girin ve analize başlayın</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Custom Dark Theme Overrides */
+  body { background-color: #121212; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .bg-black { background-color: #0a0a0a !important; }
+  
+  /* Inputs */
+  .form-control:focus, .form-select:focus {
+    background-color: #1a1a1a;
+    border-color: #0dcaf0;
+    color: white;
+    box-shadow: 0 0 0 0.25rem rgba(13, 202, 240, 0.15);
+  }
+  
+  /* Buttons */
+  .hover-scale:hover { transform: scale(1.05); transition: transform 0.2s; }
+  .shadow-info { box-shadow: 0 4px 15px rgba(13, 202, 240, 0.3); }
+
+  /* Cards */
+  .hover-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+  .hover-lift:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5) !important; }
+  .scale-up { transform: scale(1.02); z-index: 10; border: 2px solid #ffc107; }
+  
+  /* Text Effects */
+  .text-glow { text-shadow: 0 0 15px rgba(255, 193, 7, 0.4); }
+  .letter-spacing-2 { letter-spacing: 2px; }
+
+  /* Animations */
+  .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>

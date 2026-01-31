@@ -1,0 +1,37 @@
+using StockAnalyzer.Api.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. Add Services
+builder.Services.AddControllers();
+
+// 2. Caching
+builder.Services.AddMemoryCache();
+
+// 3. HttpClient Factory
+builder.Services.AddHttpClient<IYahooClient, YahooClient>()
+    .SetHandlerLifetime(TimeSpan.FromMinutes(5));
+
+// 4. Domain Services
+builder.Services.AddScoped<IStockService, StockService>();
+
+// 5. CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200", "http://localhost:5035", "https://localhost:7080")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+var app = builder.Build();
+
+app.UseCors("AllowAngular");
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
