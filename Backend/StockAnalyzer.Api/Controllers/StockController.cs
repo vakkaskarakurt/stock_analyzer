@@ -23,18 +23,11 @@ public class StockController : ControllerBase
         [FromQuery] DateTime? start = null, 
         [FromQuery] DateTime? end = null)
     {
-        try
-        {
-            var endDate = end ?? DateTime.Now;
-            var startDate = start ?? endDate.AddMonths(-1);
+        var endDate = end ?? DateTime.Now;
+        var startDate = start ?? endDate.AddMonths(-1);
 
-            var result = await _stockService.AnalyzeStockAsync(symbol, unit, startDate, endDate);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var result = await _stockService.AnalyzeStockAsync(symbol, unit, startDate, endDate);
+        return Ok(result);
     }
 
     [HttpGet("top-performers")]
@@ -56,15 +49,8 @@ public class StockController : ControllerBase
     {
         // Gerçek senaryoda veriyi veritabanından veya cache'den alırız.
         // Şimdilik hızlıca son veriyi çekiyoruz.
-        try 
-        {
-            var data = await _stockService.AnalyzeStockAsync(symbol, "TRY", DateTime.Now.AddMonths(-1), DateTime.Now);
-            var comment = await _aiService.GetCommentaryAsync(symbol, data.Prices);
-            return Ok(new { comment });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var data = await _stockService.AnalyzeStockAsync(symbol, "TRY", DateTime.Now.AddMonths(-1), DateTime.Now);
+        var comment = await _aiService.GetCommentaryAsync(symbol, data.Prices, "TRY");
+        return Ok(new { comment });
     }
 }

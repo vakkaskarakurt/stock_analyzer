@@ -1,3 +1,4 @@
+using StockAnalyzer.Api.Middleware;
 using StockAnalyzer.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,7 +34,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseCors("AllowAll");
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseCors("AllowAngular");
 
 app.MapHub<StockAnalyzer.Api.Hubs.MarketHub>("/marketHub");
 app.MapControllers();

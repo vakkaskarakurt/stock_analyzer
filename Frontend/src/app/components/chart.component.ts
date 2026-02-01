@@ -1,8 +1,8 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { createChart, IChartApi, ISeriesApi, ColorType, LineSeries, CandlestickSeries } from 'lightweight-charts';
-import { AnalysisResult } from '../services/stock.service';
+import { createChart, IChartApi, ColorType, LineSeries, CandlestickSeries } from 'lightweight-charts';
+import { AnalysisResult, StockPrice } from '../models/stock.models';
 
 @Component({
   selector: 'app-stock-chart',
@@ -126,7 +126,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
         });
         
         const firstPrice = res.prices[0].close;
-        const chartData = res.prices.map(p => ({
+        const chartData = res.prices.map((p: StockPrice) => ({
           time: p.date.split('T')[0],
           value: ((p.close - firstPrice) / firstPrice) * 100
         }));
@@ -138,7 +138,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
         wickUpColor: '#0ecb81', wickDownColor: '#f6465d' 
       });
 
-      const chartData = this.data[0].prices.map(p => ({
+      const chartData = this.data[0].prices.map((p: StockPrice) => ({
         time: p.date.split('T')[0],
         open: Number(p.open),
         high: Number(p.high),
@@ -178,7 +178,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
 }
 
 // Helpers
-function calculateSMA(data: any[], count: number) {
+interface ChartPoint { time: string; open?: number; high?: number; low?: number; close: number; value?: number; }
+
+function calculateSMA(data: ChartPoint[], count: number) {
   var result = [];
   for (var i = count - 1; i < data.length; i++){
     var sum = 0;
@@ -188,7 +190,7 @@ function calculateSMA(data: any[], count: number) {
   return result;
 }
 
-function calculateRSI(data: any[], count: number) {
+function calculateRSI(data: ChartPoint[], count: number) {
     let result = [];
     let gains = [];
     let losses = [];

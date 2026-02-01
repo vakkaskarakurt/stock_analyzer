@@ -1,10 +1,11 @@
-using StockAnalyzer.Api.Models;
 using System.Text.Json;
+using StockAnalyzer.Api.Models;
 
 namespace StockAnalyzer.Api.Services;
 
 public interface IYahooClient
 {
+    Task<(List<StockPrice> Prices, string Currency)> GetChartDataWithCurrencyAsync(string symbol, DateTime start, DateTime end);
     Task<List<StockPrice>> GetChartDataAsync(string symbol, DateTime start, DateTime end);
 }
 
@@ -16,67 +17,61 @@ public class YahooClient : IYahooClient
     public YahooClient(HttpClient httpClient, ILogger<YahooClient> logger)
     {
         _httpClient = httpClient;
-        _logger = logger;
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        _logger = logger;
+    }
+
+    public async Task<(List<StockPrice> Prices, string Currency)> GetChartDataWithCurrencyAsync(string symbol, DateTime start, DateTime end)
+    {
+        try
+        {
+            long startUnix = ((DateTimeOffset)start).ToUnixTimeSeconds();
+            long endUnix = ((DateTimeOffset)end).ToUnixTimeSeconds();
+
+            var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?period1={startUnix}&period2={endUnix}&interval=1d&events=history";
+            
+            var response = await _httpClient.GetStringAsync(url);
+            var data = JsonSerializer.Deserialize<YahooChartRoot>(response, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            var result = data?.Chart?.Result?.FirstOrDefault();
+            if (result == null) return (new List<StockPrice>(), "USD");
+
+            var currency = result.Meta?.Currency ?? "USD";
+            var timestamps = result.Timestamp;
+            var quotes = result.Indicators?.Quote?.FirstOrDefault();
+            var adjClose = result.Indicators?.Adjclose?.FirstOrDefault()?.Adjclose;
+
+            var prices = new List<StockPrice>();
+            if (timestamps != null && quotes != null)
+            {
+                for (int i = 0; i < timestamps.Count; i++)
+                {
+                    if (quotes.Close[i].HasValue)
+                    {
+                        prices.Add(new StockPrice
+                        {
+                            Date = DateTimeOffset.FromUnixTimeSeconds(timestamps[i]).DateTime,
+                            Open = quotes.Open[i] ?? 0,
+                            High = quotes.High[i] ?? 0,
+                            Low = quotes.Low[i] ?? 0,
+                            Close = adjClose != null && adjClose[i].HasValue ? adjClose[i].Value : quotes.Close[i].Value
+                        });
+                    }
+                }
+            }
+
+            return (prices, currency);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error fetching {symbol}");
+            return (new List<StockPrice>(), "USD");
+        }
     }
 
     public async Task<List<StockPrice>> GetChartDataAsync(string symbol, DateTime start, DateTime end)
     {
-        long startUnix = ((DateTimeOffset)start).ToUnixTimeSeconds();
-        long endUnix = ((DateTimeOffset)end).ToUnixTimeSeconds();
-
-        var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?symbol={symbol}&period1={startUnix}&period2={endUnix}&interval=1d";
-
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Yahoo API returned {StatusCode} for {Symbol}", response.StatusCode, symbol);
-                return new List<StockPrice>();
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var chartData = JsonSerializer.Deserialize<YahooChartRoot>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            var result = new List<StockPrice>();
-            
-            var resultObj = chartData?.Chart?.Result?.FirstOrDefault();
-            var quote = resultObj?.Indicators?.Quote?.FirstOrDefault();
-
-            if (resultObj == null || resultObj.Timestamp == null || quote == null)
-                return result;
-
-            var timestamps = resultObj.Timestamp;
-            var closes = quote.Close;
-            var opens = quote.Open;
-            var highs = quote.High;
-            var lows = quote.Low;
-
-            for (int i = 0; i < timestamps.Count; i++)
-            {
-                // Veri eksikliği kontrolü (bazen null gelebilir)
-                if (closes[i].HasValue && opens[i].HasValue && highs[i].HasValue && lows[i].HasValue)
-                {
-                    var date = DateTimeOffset.FromUnixTimeSeconds(timestamps[i]).DateTime.Date;
-                    result.Add(new StockPrice 
-                    { 
-                        Date = date, 
-                        Close = closes[i].Value,
-                        Open = opens[i].Value,
-                        High = highs[i].Value,
-                        Low = lows[i].Value
-                    });
-                }
-            }
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching data for {Symbol}", symbol);
-            return new List<StockPrice>();
-        }
+        var (prices, _) = await GetChartDataWithCurrencyAsync(symbol, start, end);
+        return prices;
     }
 }

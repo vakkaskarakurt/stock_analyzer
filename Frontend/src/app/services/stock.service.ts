@@ -2,49 +2,31 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import * as signalR from '@microsoft/signalr';
+import { environment } from '../../environments/environment';
+import { AnalysisResult, StockSummary, MarketSummary } from '../models/stock.models';
 
-export interface StockPrice {
-  date: DateTime;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-}
-
-export interface AnalysisResult {
-  symbol: string;
-  unit: string;
-  prices: StockPrice[];
-  changePercentage: number;
-}
-
-export interface StockSummary {
-  symbol: string;
-  changePercentage: number;
-  currentPriceInGold: number;
-}
-
-type DateTime = string;
+export type { AnalysisResult, StockSummary, MarketSummary };
 
 @Injectable({
   providedIn: 'root'
 })
 export class StockService {
-  private apiUrl = 'http://localhost:5035/api/stock';
+  private apiUrl = `${environment.apiUrl}/api/stock`;
+  private hubUrl = `${environment.apiUrl}/marketHub`;
   private hubConnection: signalR.HubConnection;
   
   // Real-time updates
-  public marketUpdates$ = new BehaviorSubject<any>(null);
+  public marketUpdates$ = new BehaviorSubject<MarketSummary | null>(null);
 
   constructor(private http: HttpClient) {
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:5035/marketHub')
+      .withUrl(this.hubUrl)
       .withAutomaticReconnect()
       .build();
 
     this.hubConnection.start().catch(err => console.error('SignalR Error: ' + err));
 
-    this.hubConnection.on('ReceiveMarketUpdate', (data) => {
+    this.hubConnection.on('ReceiveMarketUpdate', (data: MarketSummary) => {
       this.marketUpdates$.next(data);
     });
   }
@@ -57,15 +39,15 @@ export class StockService {
     return this.http.get<StockSummary[]>(`${this.apiUrl}/top-performers`);
   }
 
-  getMarketSummary(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/market-summary`);
+  getMarketSummary(): Observable<MarketSummary> {
+    return this.http.get<MarketSummary>(`${this.apiUrl}/market-summary`);
   }
 
   getStocks(): Observable<any[]> {
     return this.http.get<any[]>('/stocks.json');
   }
 
-  getAiComment(symbol: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/ai-comment?symbol=${symbol}`);
+  getAiComment(symbol: string): Observable<{ comment: string }> {
+    return this.http.get<{ comment: string }>(`${this.apiUrl}/ai-comment?symbol=${symbol}`);
   }
 }
