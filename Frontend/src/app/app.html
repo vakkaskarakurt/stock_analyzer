@@ -160,10 +160,7 @@
     <!-- CHART SECTION -->
     <div class="mt-4" *ngIf="chartData.length > 0 && !showLeaders">
        <app-stock-chart 
-          [data]="chartData"
-          [aiComment]="aiComment"
-          [loadingAi]="loadingAi"
-          (requestAi)="fetchAiComment($event)">
+          [data]="chartData">
        </app-stock-chart>
     </div>
 

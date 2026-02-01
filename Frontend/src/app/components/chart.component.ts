@@ -34,10 +34,6 @@ import { AnalysisResult, StockPrice } from '../models/stock.models';
                             <label class="form-check-label text-secondary small fw-bold" for="rsiSwitch">RSI 14</label>
                         </div>
                     </div>
-
-                    <button class="btn btn-sm btn-outline-glass px-3 rounded-pill" (click)="requestAi.emit(data[0].symbol)" [disabled]="loadingAi">
-                        <i class="bi bi-stars me-2" [ngClass]="{'text-warning': !loadingAi}"></i> {{ loadingAi ? 'Analyzing...' : 'AI Insight' }}
-                    </button>
                     
                     <div class="badge rounded-pill px-3 py-2 font-mono fs-6" 
                          [ngClass]="data[0].changePercentage >= 0 ? 'bg-success bg-opacity-25 text-success border border-success' : 'bg-danger bg-opacity-25 text-danger border border-danger'">
@@ -48,18 +44,6 @@ import { AnalysisResult, StockPrice } from '../models/stock.models';
              <div class="card-body p-0 position-relative">
                 <div #chartContainer style="height: 500px; width: 100%;"></div>
              </div>
-             <!-- AI Comment Section -->
-             <div *ngIf="aiComment" class="card-footer bg-transparent border-top border-white border-opacity-10 p-4">
-                 <div class="d-flex align-items-start gap-3">
-                     <div class="bg-primary bg-opacity-10 p-2 rounded-circle text-primary">
-                        <i class="bi bi-robot fs-4"></i>
-                     </div>
-                     <div>
-                         <h6 class="fw-bold mb-1 text-white">Gemini Market Intelligence</h6>
-                         <p class="text-light opacity-75 mb-0 small lh-lg" [innerHTML]="aiComment"></p>
-                     </div>
-                 </div>
-             </div>
           </div>
        </div>
     </div>
@@ -67,9 +51,6 @@ import { AnalysisResult, StockPrice } from '../models/stock.models';
 })
 export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
   @Input() data: AnalysisResult[] = [];
-  @Input() aiComment: string | null = null;
-  @Input() loadingAi: boolean = false;
-  @Output() requestAi = new EventEmitter<string>();
 
   @ViewChild('chartContainer') chartContainer!: ElementRef;
   

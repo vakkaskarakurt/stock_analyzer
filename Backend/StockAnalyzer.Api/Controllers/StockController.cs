@@ -8,12 +8,10 @@ namespace StockAnalyzer.Api.Controllers;
 public class StockController : ControllerBase
 {
     private readonly IStockService _stockService;
-    private readonly IAiService _aiService;
 
-    public StockController(IStockService stockService, IAiService aiService)
+    public StockController(IStockService stockService)
     {
         _stockService = stockService;
-        _aiService = aiService;
     }
 
     [HttpGet("analyze")]
@@ -42,15 +40,5 @@ public class StockController : ControllerBase
     {
         var result = await _stockService.GetMarketSummaryAsync();
         return Ok(result);
-    }
-
-    [HttpGet("ai-comment")]
-    public async Task<IActionResult> GetAiComment([FromQuery] string symbol)
-    {
-        // Gerçek senaryoda veriyi veritabanından veya cache'den alırız.
-        // Şimdilik hızlıca son veriyi çekiyoruz.
-        var data = await _stockService.AnalyzeStockAsync(symbol, "TRY", DateTime.Now.AddMonths(-1), DateTime.Now);
-        var comment = await _aiService.GetCommentaryAsync(symbol, data.Prices, "TRY");
-        return Ok(new { comment });
     }
 }

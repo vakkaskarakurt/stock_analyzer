@@ -39,9 +39,6 @@ export class AppComponent implements OnInit {
   showLeaders: boolean = false;
   comparisonMode: boolean = false;
 
-  aiComment: string | null = null;
-  loadingAi: boolean = false;
-
   constructor(private stockService: StockService) {}
 
   ngOnInit() {
@@ -73,7 +70,6 @@ export class AppComponent implements OnInit {
     this.error = null;
     this.showLeaders = false;
     this.chartData = [];
-    this.aiComment = null;
 
     const mainReq = this.stockService.analyze(sym, this.unit, this.startDate, this.endDate);
     const compareReq = (this.comparisonMode && this.compareSymbol) 
@@ -96,14 +92,6 @@ export class AppComponent implements OnInit {
         this.error = err.error?.message || 'Bir hata oluştu!';
         this.loading = false;
       }
-    });
-  }
-
-  fetchAiComment(symbol: string) {
-    this.loadingAi = true;
-    this.stockService.getAiComment(symbol).subscribe({
-      next: (res) => { this.aiComment = res.comment; this.loadingAi = false; },
-      error: () => { this.loadingAi = false; }
     });
   }
 

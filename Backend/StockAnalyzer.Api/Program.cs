@@ -18,7 +18,6 @@ builder.Services.AddHttpClient<IYahooClient, YahooClient>()
 // 4. Domain Services
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IStockService, StockService>();
-builder.Services.AddScoped<IAiService, GeminiAiService>();
 builder.Services.AddHostedService<MarketWorker>();
 
 // 5. CORS
