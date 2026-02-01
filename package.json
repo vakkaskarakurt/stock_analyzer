@@ -1,5 +1,11 @@
 {
+  "scripts": {
+    "start": "npx concurrently -k --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,magenta\" \"cd Backend/StockAnalyzer.Api && dotnet run\" \"cd Frontend && npm start\""
+  },
   "dependencies": {
     "playwright": "^1.58.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }
