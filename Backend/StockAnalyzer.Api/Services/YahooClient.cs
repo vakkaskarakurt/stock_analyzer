@@ -1,5 +1,4 @@
 using StockAnalyzer.Api.Models;
-using System.Net;
 using System.Text.Json;
 
 namespace StockAnalyzer.Api.Services;
@@ -18,8 +17,6 @@ public class YahooClient : IYahooClient
     {
         _httpClient = httpClient;
         _logger = logger;
-
-        // Default Headers
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
     }
 
@@ -28,7 +25,6 @@ public class YahooClient : IYahooClient
         long startUnix = ((DateTimeOffset)start).ToUnixTimeSeconds();
         long endUnix = ((DateTimeOffset)end).ToUnixTimeSeconds();
 
-        // JSON Chart API
         var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?symbol={symbol}&period1={startUnix}&period2={endUnix}&interval=1d";
 
         try
@@ -47,21 +43,30 @@ public class YahooClient : IYahooClient
             var result = new List<StockPrice>();
             
             var resultObj = chartData?.Chart?.Result?.FirstOrDefault();
-            if (resultObj == null || resultObj.Timestamp == null || resultObj.Indicators?.Quote?.FirstOrDefault()?.Close == null)
+            var quote = resultObj?.Indicators?.Quote?.FirstOrDefault();
+
+            if (resultObj == null || resultObj.Timestamp == null || quote == null)
                 return result;
 
             var timestamps = resultObj.Timestamp;
-            var closes = resultObj.Indicators.Quote.First().Close;
+            var closes = quote.Close;
+            var opens = quote.Open;
+            var highs = quote.High;
+            var lows = quote.Low;
 
             for (int i = 0; i < timestamps.Count; i++)
             {
-                if (closes[i].HasValue)
+                // Veri eksikliği kontrolü (bazen null gelebilir)
+                if (closes[i].HasValue && opens[i].HasValue && highs[i].HasValue && lows[i].HasValue)
                 {
                     var date = DateTimeOffset.FromUnixTimeSeconds(timestamps[i]).DateTime.Date;
                     result.Add(new StockPrice 
                     { 
                         Date = date, 
-                        Price = closes[i].Value 
+                        Close = closes[i].Value,
+                        Open = opens[i].Value,
+                        High = highs[i].Value,
+                        Low = lows[i].Value
                     });
                 }
             }

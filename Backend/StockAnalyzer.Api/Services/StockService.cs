@@ -8,6 +8,7 @@ public interface IStockService
 {
     Task<AnalysisResult> AnalyzeStockAsync(string symbol, string unit, DateTime startDate, DateTime endDate);
     Task<List<StockSummary>> GetTopPerformersAsync();
+    Task<MarketSummary> GetMarketSummaryAsync();
 }
 
 public class StockService : IStockService
@@ -25,26 +26,48 @@ public class StockService : IStockService
         _logger = logger;
     }
 
+    public async Task<MarketSummary> GetMarketSummaryAsync()
+    {
+        const string CACHE_KEY = "MarketSummary";
+        if (_cache.TryGetValue(CACHE_KEY, out MarketSummary cached)) return cached;
+
+        var endDate = DateTime.Now;
+        var startDate = endDate.AddDays(-7);
+
+        var usdTask = _yahooClient.GetChartDataAsync("USDTRY=X", startDate, endDate);
+        var goldTask = _yahooClient.GetChartDataAsync("GC=F", startDate, endDate);
+
+        await Task.WhenAll(usdTask, goldTask);
+
+        var usd = usdTask.Result.LastOrDefault()?.Close ?? 0;
+        var usdPrev = usdTask.Result.Count > 1 ? usdTask.Result[^2].Close : usd;
+        
+        var gold = goldTask.Result.LastOrDefault()?.Close ?? 0;
+        var goldPrev = goldTask.Result.Count > 1 ? goldTask.Result[^2].Close : gold;
+
+        var result = new MarketSummary
+        {
+            UsdPrice = usd,
+            UsdChange = usdPrev != 0 ? ((usd - usdPrev) / usdPrev) * 100 : 0,
+            GoldPrice = gold,
+            GoldChange = goldPrev != 0 ? ((gold - goldPrev) / goldPrev) * 100 : 0
+        };
+
+        _cache.Set(CACHE_KEY, result, TimeSpan.FromMinutes(5));
+        return result;
+    }
+
     public async Task<List<StockSummary>> GetTopPerformersAsync()
     {
         const string CACHE_KEY = "TopPerformers_Gold";
-        
-        // Cache Kontrolü
-        if (_cache.TryGetValue(CACHE_KEY, out List<StockSummary> cachedResult))
-        {
-            _logger.LogInformation("Returning cached Top Performers data.");
-            return cachedResult;
-        }
-
-        _logger.LogInformation("Cache miss. Fetching fresh data for Top Performers.");
+        if (_cache.TryGetValue(CACHE_KEY, out List<StockSummary> cachedResult)) return cachedResult;
 
         var stockList = _configuration.GetSection("StockSettings:PopularStocks").Get<List<string>>() 
-                        ?? new List<string> { "THYAO", "GARAN" }; // Fallback
+                        ?? new List<string> { "THYAO", "GARAN" };
 
         var endDate = DateTime.Now;
         var startDate = endDate.AddYears(-1);
         
-        // 1. Referans Verileri
         var usdTask = _yahooClient.GetChartDataAsync("USDTRY=X", startDate, endDate);
         var goldTask = _yahooClient.GetChartDataAsync("GC=F", startDate, endDate);
         
@@ -53,18 +76,16 @@ public class StockService : IStockService
         var usdData = usdTask.Result;
         var goldData = goldTask.Result;
 
-        if (!usdData.Any() || !goldData.Any())
-            throw new Exception("Market benchmark data (USD/Gold) unavailable.");
+        if (!usdData.Any() || !goldData.Any()) return new List<StockSummary>();
 
-        var firstUsd = usdData.First().Price;
-        var lastUsd = usdData.Last().Price;
-        var firstGold = goldData.First().Price;
-        var lastGold = goldData.Last().Price;
+        var firstUsd = usdData.First().Close;
+        var lastUsd = usdData.Last().Close;
+        var firstGold = goldData.First().Close;
+        var lastGold = goldData.Last().Close;
 
         var results = new ConcurrentBag<StockSummary>();
-
-        // 2. Hisseleri Paralel Çek
         var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 10 };
+        
         await Parallel.ForEachAsync(stockList, parallelOptions, async (symbol, token) =>
         {
             try
@@ -74,11 +95,9 @@ public class StockService : IStockService
                 
                 if (stockData.Any())
                 {
-                    var firstStock = stockData.First().Price;
-                    var lastStock = stockData.Last().Price;
+                    var firstStock = stockData.First().Close;
+                    var lastStock = stockData.Last().Close;
 
-                    // Altın Bazlı Değişim Hesaplama
-                    // 1 Yıl Önceki Altın Değeri = (HisseFiyatı / DolarKuru) / OnsAltın
                     var startVal = (firstStock / firstUsd) / firstGold;
                     var endVal = (lastStock / lastUsd) / lastGold;
                     
@@ -94,86 +113,84 @@ public class StockService : IStockService
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to process {Symbol}", symbol);
-            }
+            catch { /* Ignore errors */ }
         });
 
         var finalResult = results.OrderByDescending(x => x.ChangePercentage).Take(30).ToList();
-
-        // Cache'e Yaz
-        var cacheDuration = _configuration.GetValue<int>("StockSettings:CacheDurationMinutes", 15);
-        _cache.Set(CACHE_KEY, finalResult, TimeSpan.FromMinutes(cacheDuration));
-
+        _cache.Set(CACHE_KEY, finalResult, TimeSpan.FromMinutes(15));
         return finalResult;
     }
 
     public async Task<AnalysisResult> AnalyzeStockAsync(string symbol, string unit, DateTime startDate, DateTime endDate)
     {
-        // Basit Input Validasyonu
-        if (string.IsNullOrWhiteSpace(symbol) || symbol.Length > 10 || !symbol.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '='))
-            throw new ArgumentException("Invalid stock symbol.");
-
         var formattedSymbol = symbol.ToUpper().EndsWith(".IS") && !symbol.Contains("=") 
             ? symbol.ToUpper() 
             : (symbol.Contains("=") ? symbol.ToUpper() : $"{symbol.ToUpper()}.IS");
         
         var stockPrices = await _yahooClient.GetChartDataAsync(formattedSymbol, startDate, endDate);
-        
-        if (!stockPrices.Any())
-            throw new Exception($"Stock data not found for {formattedSymbol}!");
+        if (!stockPrices.Any()) throw new Exception("Data not found");
 
-        var usdPrices = await _yahooClient.GetChartDataAsync("USDTRY=X", startDate, endDate);
-        var usdDict = usdPrices.ToDictionary(x => x.Date, x => x.Price);
+        var result = new AnalysisResult { Symbol = symbol.ToUpper(), Unit = unit.ToUpper(), Prices = new List<StockPrice>() };
 
-        var result = new AnalysisResult
-        {
-            Symbol = symbol.ToUpper(),
-            Unit = unit.ToUpper(),
-            Prices = new List<StockPrice>()
-        };
-
-        // Para birimi dönüşüm mantığı
-        if (unit.ToUpper() == "USD")
-        {
-            foreach (var stock in stockPrices)
-            {
-                if (usdDict.TryGetValue(stock.Date, out var usdRate) && usdRate > 0)
-                {
-                    result.Prices.Add(new StockPrice { Date = stock.Date, Price = stock.Price / usdRate });
-                }
-            }
-        }
-        else if (unit.ToUpper() == "GOLD")
-        {
-            var goldPrices = await _yahooClient.GetChartDataAsync("GC=F", startDate, endDate);
-            var goldDict = goldPrices.ToDictionary(x => x.Date, x => x.Price);
-
-            foreach (var stock in stockPrices)
-            {
-                if (usdDict.TryGetValue(stock.Date, out var usdRate) && 
-                    goldDict.TryGetValue(stock.Date, out var goldPrice) && 
-                    usdRate > 0 && goldPrice > 0)
-                {
-                    var stockInUsd = stock.Price / usdRate;
-                    result.Prices.Add(new StockPrice { Date = stock.Date, Price = stockInUsd / goldPrice });
-                }
-            }
-        }
-        else // TRY
+        if (unit.ToUpper() == "TRY")
         {
             result.Prices = stockPrices;
         }
+        else
+        {
+            // Döviz/Altın Dönüşümü
+            var benchmarkSymbol = unit.ToUpper() == "USD" ? "USDTRY=X" : "GC=F";
+            var benchmarkData = await _yahooClient.GetChartDataAsync(benchmarkSymbol, startDate, endDate);
+            var benchmarkDict = benchmarkData.ToDictionary(x => x.Date, x => x.Close);
 
-        if (!result.Prices.Any())
-            throw new Exception("Currency data mismatch. Try a wider date range.");
+            // Altın ise ayrıca USD kuru da lazım (Çünkü Altın verisi ONS/USD)
+            Dictionary<DateTime, decimal> usdDict = null;
+            if (unit.ToUpper() == "GOLD")
+            {
+                var usdData = await _yahooClient.GetChartDataAsync("USDTRY=X", startDate, endDate);
+                usdDict = usdData.ToDictionary(x => x.Date, x => x.Close);
+            }
+
+            foreach (var s in stockPrices)
+            {
+                decimal divisor = 1;
+                
+                if (unit.ToUpper() == "USD")
+                {
+                    if (benchmarkDict.TryGetValue(s.Date, out var rate) && rate > 0) divisor = rate;
+                }
+                else if (unit.ToUpper() == "GOLD")
+                {
+                    if (usdDict != null && usdDict.TryGetValue(s.Date, out var usdRate) && 
+                        benchmarkDict.TryGetValue(s.Date, out var goldRate) && usdRate > 0 && goldRate > 0)
+                    {
+                        // Formül: (TL Fiyat / Dolar Kuru) / Ons Altın Fiyatı
+                        divisor = usdRate * goldRate;
+                    }
+                }
+
+                if (divisor != 1)
+                {
+                    result.Prices.Add(new StockPrice
+                    {
+                        Date = s.Date,
+                        Close = s.Close / divisor,
+                        Open = s.Open / divisor,
+                        High = s.High / divisor,
+                        Low = s.Low / divisor
+                    });
+                }
+            }
+        }
 
         result.Prices = result.Prices.OrderBy(x => x.Date).ToList();
         
-        var first = result.Prices.First().Price;
-        var last = result.Prices.Last().Price;
-        result.ChangePercentage = first != 0 ? ((last - first) / first) * 100 : 0;
+        if (result.Prices.Any())
+        {
+            var first = result.Prices.First().Close;
+            var last = result.Prices.Last().Close;
+            result.ChangePercentage = first != 0 ? ((last - first) / first) * 100 : 0;
+        }
 
         return result;
     }

@@ -4,7 +4,10 @@ import { Observable } from 'rxjs';
 
 export interface StockPrice {
   date: string;
-  price: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
 }
 
 export interface AnalysisResult {
@@ -24,18 +27,23 @@ export interface StockSummary {
   providedIn: 'root'
 })
 export class StockService {
-  private apiUrl = 'http://localhost:5035/api/stock'; // Using HTTP port from dotnet run output
+  private apiUrl = 'http://localhost:5035/api/stock';
 
   constructor(private http: HttpClient) { }
 
-  analyze(symbol: string, unit: string, start?: string, end?: string): Observable<AnalysisResult> {
-    let url = `${this.apiUrl}/analyze?symbol=${symbol}&unit=${unit}`;
-    if (start) url += `&start=${start}`;
-    if (end) url += `&end=${end}`;
-    return this.http.get<AnalysisResult>(url);
+  analyze(symbol: string, unit: string, start: string, end: string): Observable<AnalysisResult> {
+    return this.http.get<AnalysisResult>(`${this.apiUrl}/analyze?symbol=${symbol}&unit=${unit}&startDate=${start}&endDate=${end}`);
   }
 
   getTopPerformers(): Observable<StockSummary[]> {
     return this.http.get<StockSummary[]>(`${this.apiUrl}/top-performers`);
+  }
+
+  getMarketSummary(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/market-summary`);
+  }
+
+  getStocks(): Observable<any[]> {
+    return this.http.get<any[]>('/stocks.json');
   }
 }

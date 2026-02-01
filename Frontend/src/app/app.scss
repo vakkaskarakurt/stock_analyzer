@@ -1,0 +1,54 @@
+// Glassmorphism Header
+header {
+  background: rgba(0, 0, 0, 0.7) !important; // Yarı saydam siyah
+  backdrop-filter: blur(12px); // Bulanıklık efekti
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+// Modern Card Styles
+.card {
+  background: rgba(33, 37, 41, 0.8) !important; // Hafif transparan kart
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
+  }
+}
+
+// Hover Scale Effect for Leaderboard Cards
+.hover-scale {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(255, 193, 7, 0.2); // Altın rengi gölge
+  }
+}
+
+// Input Focus Glow
+.form-control:focus, .form-select:focus {
+  box-shadow: 0 0 0 0.25rem rgba(13, 202, 240, 0.25);
+  border-color: #0dcaf0;
+}
+
+// Custom Scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #212529; 
+}
+::-webkit-scrollbar-thumb {
+  background: #495057; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6c757d; 
+}
+
+// Chart Container Gradient Mask (Opsiyonel: Grafiğin altı silikleşsin diye)
+canvas {
+  filter: drop-shadow(0 0 10px rgba(13, 202, 240, 0.2));
+}

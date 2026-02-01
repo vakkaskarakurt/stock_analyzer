@@ -38,14 +38,14 @@ public class StockController : ControllerBase
     [HttpGet("top-performers")]
     public async Task<IActionResult> GetTopPerformers()
     {
-        try
-        {
-            var result = await _stockService.GetTopPerformersAsync();
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var result = await _stockService.GetTopPerformersAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("market-summary")]
+    public async Task<IActionResult> GetMarketSummary()
+    {
+        var result = await _stockService.GetMarketSummaryAsync();
+        return Ok(result);
     }
 }

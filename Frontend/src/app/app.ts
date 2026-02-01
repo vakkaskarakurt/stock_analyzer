@@ -1,20 +1,31 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StockService, AnalysisResult, StockSummary } from './services/stock.service';
-import { BaseChartDirective, provideCharts, withDefaultRegisterables } from 'ng2-charts';
-import { ChartConfiguration, ChartOptions, ChartType } from 'chart.js';
+import { createChart, IChartApi, ISeriesApi, ColorType, LineSeries, CandlestickSeries } from 'lightweight-charts';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective],
-  providers: [provideCharts(withDefaultRegisterables())],
+  imports: [CommonModule, FormsModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
+  @ViewChild('chartContainer') chartContainer!: ElementRef;
+  private chart: IChartApi | null = null;
+
   symbol: string = '';
+  compareSymbol: string = '';
+  
+  // Autocomplete
+  allStocks: any[] = [];
+  filteredStocks: any[] = [];
+  showSuggestions: boolean = false;
+  isCompareSearch: boolean = false;
+
   unit: string = 'USD';
   startDate: string = '';
   endDate: string = '';
@@ -22,51 +33,26 @@ export class AppComponent {
   error: string | null = null;
   result: AnalysisResult | null = null;
   
-  // Top Performers
   topPerformers: StockSummary[] = [];
+  marketSummary: any = null;
   loadingLeaders: boolean = false;
   showLeaders: boolean = false;
-
-  // Chart Properties
-  public lineChartData: ChartConfiguration<'line'>['data'] = {
-    labels: [],
-    datasets: [
-      {
-        data: [],
-        label: 'Fiyat',
-        fill: true,
-        tension: 0.5,
-        borderColor: '#0d7377',
-        backgroundColor: 'rgba(13, 115, 119, 0.2)'
-      }
-    ]
-  };
-
-  public lineChartOptions: ChartOptions<'line'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      y: {
-        grid: { color: 'rgba(255,255,255,0.1)' },
-        ticks: { color: '#ffffff' }
-      },
-      x: {
-        grid: { color: 'rgba(255,255,255,0.1)' },
-        ticks: { color: '#ffffff' }
-      }
-    },
-    plugins: {
-      legend: { display: false }
-    }
-  };
+  comparisonMode: boolean = false;
 
   constructor(private stockService: StockService) {
+    this.loadMarketSummary();
+    this.stockService.getStocks().subscribe(data => this.allStocks = data);
     const end = new Date();
     const start = new Date();
-    start.setMonth(start.getMonth() - 1);
-
+    start.setMonth(start.getMonth() - 12);
     this.endDate = end.toISOString().split('T')[0];
     this.startDate = start.toISOString().split('T')[0];
+  }
+
+  ngOnDestroy() {
+    if (this.chart) {
+      this.chart.remove();
+    }
   }
 
   analyze() {
@@ -76,10 +62,24 @@ export class AppComponent {
     this.error = null;
     this.showLeaders = false;
 
-    this.stockService.analyze(this.symbol, this.unit, this.startDate, this.endDate).subscribe({
-      next: (data) => {
-        this.result = data;
-        this.updateChart(data);
+    const mainReq = this.stockService.analyze(this.symbol, this.unit, this.startDate, this.endDate);
+    const compareReq = (this.comparisonMode && this.compareSymbol) 
+      ? this.stockService.analyze(this.compareSymbol, this.unit, this.startDate, this.endDate).pipe(catchError(() => of(null)))
+      : of(null);
+
+    forkJoin([mainReq, compareReq]).subscribe({
+      next: ([mainData, compareData]) => {
+        if (!mainData) {
+          this.error = "Ana hisse verisi bulunamadı.";
+          this.loading = false;
+          return;
+        }
+
+        this.result = mainData;
+        const datasets = [mainData];
+        if (compareData) datasets.push(compareData as AnalysisResult);
+        
+        setTimeout(() => this.renderChart(datasets), 100);
         this.loading = false;
       },
       error: (err) => {
@@ -89,20 +89,83 @@ export class AppComponent {
     });
   }
 
+  private renderChart(results: AnalysisResult[]) {
+    if (!this.chartContainer) return;
+
+    if (this.chart) {
+      this.chart.remove();
+      this.chart = null;
+    }
+
+    this.chart = createChart(this.chartContainer.nativeElement, {
+      layout: {
+        background: { type: ColorType.Solid, color: '#111111' },
+        textColor: '#d1d5db',
+      },
+      grid: {
+        vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+        horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+      },
+      width: this.chartContainer.nativeElement.clientWidth,
+      height: 400,
+    });
+
+    const isComparison = results.length > 1;
+
+    if (isComparison) {
+      // Comparison: Line Charts
+      results.forEach((res, index) => {
+        const lineSeries = this.chart!.addSeries(LineSeries, {
+          color: index === 0 ? '#0dcaf0' : '#ffc107',
+          lineWidth: 2,
+          title: res.symbol
+        });
+        
+        const firstPrice = res.prices[0].close;
+        const data = res.prices.map(p => ({
+          time: p.date.split('T')[0],
+          value: ((p.close - firstPrice) / firstPrice) * 100
+        }));
+        lineSeries.setData(data);
+      });
+    } else {
+      // Single: Candlestick Chart
+      const candleSeries = this.chart.addSeries(CandlestickSeries, {
+        upColor: '#26a69a', 
+        downColor: '#ef5350', 
+        borderVisible: false, 
+        wickUpColor: '#26a69a', 
+        wickDownColor: '#ef5350' 
+      });
+
+      const data = results[0].prices.map(p => ({
+        time: p.date.split('T')[0],
+        open: Number(p.open),
+        high: Number(p.high),
+        low: Number(p.low),
+        close: Number(p.close)
+      }));
+      candleSeries.setData(data);
+    }
+
+    this.chart.timeScale().fitContent();
+  }
+
+  // --- Helpers ---
   loadLeaders() {
     this.loadingLeaders = true;
     this.showLeaders = true;
     this.error = null;
-    
     this.stockService.getTopPerformers().subscribe({
-      next: (data) => {
-        this.topPerformers = data;
-        this.loadingLeaders = false;
-      },
-      error: (err) => {
-        this.error = 'Lider tablosu yüklenemedi: ' + err.message;
-        this.loadingLeaders = false;
-      }
+      next: (data) => { this.topPerformers = data; this.loadingLeaders = false; },
+      error: (err) => { this.error = err.message; this.loadingLeaders = false; }
+    });
+  }
+
+  loadMarketSummary() {
+    this.stockService.getMarketSummary().subscribe({
+      next: (data) => this.marketSummary = data,
+      error: (err) => console.error(err)
     });
   }
 
@@ -110,30 +173,32 @@ export class AppComponent {
     const end = new Date();
     const start = new Date();
     start.setMonth(start.getMonth() - months);
-    
     this.endDate = end.toISOString().split('T')[0];
     this.startDate = start.toISOString().split('T')[0];
-    
-    if (this.symbol) {
-      this.analyze();
-    }
+    if (this.symbol) this.analyze();
   }
 
-  private updateChart(data: AnalysisResult) {
-    this.lineChartData = {
-      labels: data.prices.map(p => new Date(p.date).toLocaleDateString()),
-      datasets: [
-        {
-          data: data.prices.map(p => p.price),
-          label: `${data.symbol} (${data.unit})`,
-          fill: true,
-          tension: 0.3,
-          borderColor: data.changePercentage >= 0 ? '#32de84' : '#ff6b6b',
-          backgroundColor: data.changePercentage >= 0 ? 'rgba(50, 222, 132, 0.2)' : 'rgba(255, 107, 107, 0.2)',
-          pointRadius: 0,
-          borderWidth: 3
-        }
-      ]
-    };
+  onSearchInput(isCompare: boolean = false) {
+    this.isCompareSearch = isCompare;
+    const val = isCompare ? this.compareSymbol : this.symbol;
+    if (!val) {
+      this.filteredStocks = [];
+      this.showSuggestions = false;
+      return;
+    }
+    const query = val.toUpperCase();
+    this.filteredStocks = this.allStocks.filter(s => 
+      s.symbol.includes(query) || s.name.toUpperCase().includes(query)
+    ).slice(0, 5);
+    this.showSuggestions = true;
   }
+
+  selectStock(stock: any) {
+    if (this.isCompareSearch) this.compareSymbol = stock.symbol;
+    else this.symbol = stock.symbol;
+    this.showSuggestions = false;
+    this.analyze();
+  }
+
+  hideSuggestions() { setTimeout(() => this.showSuggestions = false, 200); }
 }
