@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StockService, AnalysisResult, StockSummary } from './services/stock.service';
@@ -15,11 +15,10 @@ import { catchError } from 'rxjs/operators';
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   symbol: string = '';
   compareSymbol: string = '';
   
-  // Autocomplete
   allStocks: any[] = [];
   filteredStocks: any[] = [];
   showSuggestions: boolean = false;
@@ -31,25 +30,33 @@ export class AppComponent {
   loading: boolean = false;
   error: string | null = null;
   
-  // Results
   chartData: AnalysisResult[] = [];
-  
-  // Dashboard Data
   topPerformers: StockSummary[] = [];
   marketSummary: any = null;
+  watchlist: string[] = [];
   
-  // UI Flags
   loadingLeaders: boolean = false;
   showLeaders: boolean = false;
   comparisonMode: boolean = false;
 
-  // AI
   aiComment: string | null = null;
   loadingAi: boolean = false;
 
-  constructor(private stockService: StockService) {
+  constructor(private stockService: StockService) {}
+
+  ngOnInit() {
     this.loadMarketSummary();
+    this.loadWatchlist();
     this.stockService.getStocks().subscribe(data => this.allStocks = data);
+    
+    // SignalR Live Updates
+    this.stockService.marketUpdates$.subscribe(data => {
+      if (data) {
+        this.marketSummary = data;
+        console.log('Live Market Update Received via SignalR');
+      }
+    });
+    
     const end = new Date();
     const start = new Date();
     start.setMonth(start.getMonth() - 12);
@@ -57,16 +64,18 @@ export class AppComponent {
     this.startDate = start.toISOString().split('T')[0];
   }
 
-  analyze() {
-    if (!this.symbol) return;
+  analyze(overrideSymbol?: string) {
+    const sym = overrideSymbol || this.symbol;
+    if (!sym) return;
+    if (overrideSymbol) this.symbol = sym;
 
     this.loading = true;
     this.error = null;
     this.showLeaders = false;
     this.chartData = [];
-    this.aiComment = null; // Reset comment
+    this.aiComment = null;
 
-    const mainReq = this.stockService.analyze(this.symbol, this.unit, this.startDate, this.endDate);
+    const mainReq = this.stockService.analyze(sym, this.unit, this.startDate, this.endDate);
     const compareReq = (this.comparisonMode && this.compareSymbol) 
       ? this.stockService.analyze(this.compareSymbol, this.unit, this.startDate, this.endDate).pipe(catchError(() => of(null)))
       : of(null);
@@ -74,14 +83,12 @@ export class AppComponent {
     forkJoin([mainReq, compareReq]).subscribe({
       next: ([mainData, compareData]) => {
         if (!mainData) {
-          this.error = "Ana hisse verisi bulunamadı.";
+          this.error = "Hisse verisi bulunamadı.";
           this.loading = false;
           return;
         }
-
         const results = [mainData];
         if (compareData) results.push(compareData as AnalysisResult);
-        
         this.chartData = results;
         this.loading = false;
       },
@@ -95,33 +102,39 @@ export class AppComponent {
   fetchAiComment(symbol: string) {
     this.loadingAi = true;
     this.stockService.getAiComment(symbol).subscribe({
-      next: (res) => {
-        this.aiComment = res.comment;
-        this.loadingAi = false;
-      },
-      error: (err) => {
-        console.error(err);
-        this.loadingAi = false;
-      }
+      next: (res) => { this.aiComment = res.comment; this.loadingAi = false; },
+      error: () => { this.loadingAi = false; }
     });
+  }
+
+  // Watchlist Logic
+  loadWatchlist() {
+    const saved = localStorage.getItem('stock_watchlist');
+    this.watchlist = saved ? JSON.parse(saved) : ['THYAO', 'EREGL', 'GARAN'];
+  }
+
+  toggleWatchlist(symbol: string) {
+    const sym = symbol.toUpperCase();
+    if (this.watchlist.includes(sym)) {
+      this.watchlist = this.watchlist.filter(s => s !== sym);
+    } else {
+      this.watchlist.push(sym);
+    }
+    localStorage.setItem('stock_watchlist', JSON.stringify(this.watchlist));
   }
 
   // --- Helpers ---
   loadLeaders() {
     this.loadingLeaders = true;
     this.showLeaders = true;
-    this.error = null;
     this.stockService.getTopPerformers().subscribe({
       next: (data) => { this.topPerformers = data; this.loadingLeaders = false; },
-      error: (err) => { this.error = err.message; this.loadingLeaders = false; }
+      error: () => { this.loadingLeaders = false; }
     });
   }
 
   loadMarketSummary() {
-    this.stockService.getMarketSummary().subscribe({
-      next: (data) => this.marketSummary = data,
-      error: (err) => console.error(err)
-    });
+    this.stockService.getMarketSummary().subscribe(data => this.marketSummary = data);
   }
 
   setPeriod(months: number) {
@@ -136,11 +149,7 @@ export class AppComponent {
   onSearchInput(isCompare: boolean = false) {
     this.isCompareSearch = isCompare;
     const val = isCompare ? this.compareSymbol : this.symbol;
-    if (!val) {
-      this.filteredStocks = [];
-      this.showSuggestions = false;
-      return;
-    }
+    if (!val) { this.filteredStocks = []; this.showSuggestions = false; return; }
     const query = val.toUpperCase();
     this.filteredStocks = this.allStocks.filter(s => 
       s.symbol.includes(query) || s.name.toUpperCase().includes(query)

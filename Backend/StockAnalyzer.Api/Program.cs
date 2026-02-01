@@ -6,6 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // 2. Caching
+// 1. Add SignalR
+builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 
 // 3. HttpClient Factory
@@ -13,8 +15,10 @@ builder.Services.AddHttpClient<IYahooClient, YahooClient>()
     .SetHandlerLifetime(TimeSpan.FromMinutes(5));
 
 // 4. Domain Services
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IStockService, StockService>();
-builder.Services.AddScoped<IAiService, MockAiService>();
+builder.Services.AddScoped<IAiService, GeminiAiService>();
+builder.Services.AddHostedService<MarketWorker>();
 
 // 5. CORS
 builder.Services.AddCors(options =>
@@ -29,10 +33,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseCors("AllowAngular");
+app.UseCors("AllowAll");
 
-app.UseAuthorization();
-
+app.MapHub<StockAnalyzer.Api.Hubs.MarketHub>("/marketHub");
 app.MapControllers();
 
 app.Run();

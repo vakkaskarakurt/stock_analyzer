@@ -10,8 +10,8 @@ import { AnalysisResult } from '../services/stock.service';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="row justify-content-center animate-fade-in">
-       <div class="col-lg-12"> <!-- Genişliği arttırdım -->
-          <div class="card-glass shadow-lg"> <!-- Glass Class -->
+       <div class="col-lg-12">
+          <div class="card-glass shadow-lg">
              <div class="card-header bg-transparent border-bottom border-white border-opacity-10 d-flex justify-content-between align-items-center py-3 px-4">
                 <div>
                    <h5 class="text-white m-0 fw-bold d-flex align-items-center gap-2">
@@ -23,10 +23,16 @@ import { AnalysisResult } from '../services/stock.service';
                    </small>
                 </div>
                 <div class="d-flex gap-3 align-items-center">
-                    <!-- SMA Toggle -->
-                    <div class="form-check form-switch" *ngIf="data.length === 1">
-                        <input class="form-check-input" type="checkbox" id="smaSwitch" [(ngModel)]="showSMA" (change)="renderChart()">
-                        <label class="form-check-label text-secondary small fw-bold" for="smaSwitch">SMA 20</label>
+                    <!-- Indicators Toggle -->
+                    <div class="d-flex gap-2 me-2" *ngIf="data.length === 1">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="smaSwitch" [(ngModel)]="showSMA" (change)="renderChart()">
+                            <label class="form-check-label text-secondary small fw-bold" for="smaSwitch">SMA 20</label>
+                        </div>
+                        <div class="form-check form-switch border-start border-secondary ps-4">
+                            <input class="form-check-input" type="checkbox" id="rsiSwitch" [(ngModel)]="showRSI" (change)="renderChart()">
+                            <label class="form-check-label text-secondary small fw-bold" for="rsiSwitch">RSI 14</label>
+                        </div>
                     </div>
 
                     <button class="btn btn-sm btn-outline-glass px-3 rounded-pill" (click)="requestAi.emit(data[0].symbol)" [disabled]="loadingAi">
@@ -40,7 +46,6 @@ import { AnalysisResult } from '../services/stock.service';
                 </div>
              </div>
              <div class="card-body p-0 position-relative">
-                <!-- TradingView Container -->
                 <div #chartContainer style="height: 500px; width: 100%;"></div>
              </div>
              <!-- AI Comment Section -->
@@ -70,6 +75,7 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
   
   private chart: IChartApi | null = null;
   showSMA: boolean = false;
+  showRSI: boolean = false;
 
   ngAfterViewInit() {
     this.renderChart();
@@ -95,42 +101,28 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
       this.chart = null;
     }
 
-    // TRANSPARENT BACKGROUND CONFIGURATION
     this.chart = createChart(this.chartContainer.nativeElement, {
       layout: {
-        background: { type: ColorType.Solid, color: 'transparent' }, // Şeffaf Zemin
+        background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#94a3b8',
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.03)' }, // Çok silik çizgiler
+        vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
         horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
       },
       width: this.chartContainer.nativeElement.clientWidth,
       height: 500,
-      timeScale: {
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-      },
-      rightPriceScale: {
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-      }
+      timeScale: { borderColor: 'rgba(255, 255, 255, 0.1)' },
     });
-
-    const resizeObserver = new ResizeObserver(entries => {
-      if (entries.length === 0 || entries[0].target !== this.chartContainer.nativeElement) return;
-      const newRect = entries[0].contentRect;
-      this.chart?.applyOptions({ height: newRect.height, width: newRect.width });
-    });
-    resizeObserver.observe(this.chartContainer.nativeElement);
 
     const isComparison = this.data.length > 1;
 
     if (isComparison) {
       this.data.forEach((res, index) => {
         const lineSeries = this.chart!.addSeries(LineSeries, {
-          color: index === 0 ? '#00f2fe' : '#ff9800', // Neon Mavi vs Turuncu
+          color: index === 0 ? '#00f2fe' : '#ff9800',
           lineWidth: 2,
           title: res.symbol,
-          crosshairMarkerVisible: true,
         });
         
         const firstPrice = res.prices[0].close;
@@ -141,13 +133,9 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
         lineSeries.setData(chartData);
       });
     } else {
-      // Modern Mum Renkleri (Binance Style)
       const candleSeries = this.chart.addSeries(CandlestickSeries, {
-        upColor: '#0ecb81', 
-        downColor: '#f6465d', 
-        borderVisible: false, 
-        wickUpColor: '#0ecb81', 
-        wickDownColor: '#f6465d' 
+        upColor: '#0ecb81', downColor: '#f6465d', borderVisible: false, 
+        wickUpColor: '#0ecb81', wickDownColor: '#f6465d' 
       });
 
       const chartData = this.data[0].prices.map(p => ({
@@ -162,12 +150,26 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
       if (this.showSMA) {
         const smaData = calculateSMA(chartData, 20);
         const smaSeries = this.chart.addSeries(LineSeries, { 
-            color: '#fbbf24', // Amber
-            lineWidth: 2,
-            title: 'SMA 20',
-            crosshairMarkerVisible: false
+            color: '#fbbf24', lineWidth: 2, title: 'SMA 20'
         });
         smaSeries.setData(smaData);
+      }
+
+      if (this.showRSI) {
+        const rsiData = calculateRSI(chartData, 14);
+        const rsiSeries = this.chart.addSeries(LineSeries, {
+            color: '#e91e63', // Pink
+            lineWidth: 1,
+            title: 'RSI 14',
+            priceScaleId: 'rsi-scale' // Separate scale
+        });
+        
+        this.chart.priceScale('rsi-scale').applyOptions({
+            scaleMargins: { top: 0.8, bottom: 0 }, // Bottom 20%
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+        });
+        
+        rsiSeries.setData(rsiData);
       }
     }
 
@@ -175,19 +177,37 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
   }
 }
 
-// Helper
+// Helpers
 function calculateSMA(data: any[], count: number) {
-  var avg = function(data: any[]) {
-    var sum = 0;
-    for (var i = 0; i < data.length; i++) {
-       sum += data[i].close;
-    }
-    return sum / data.length;
-  };
   var result = [];
-  for (var i = count - 1, len = data.length; i < len; i++){
-    var val = avg(data.slice(i - count + 1, i + 1));
-    result.push({ time: data[i].time, value: val});
+  for (var i = count - 1; i < data.length; i++){
+    var sum = 0;
+    for (var j = 0; j < count; j++) sum += data[i - j].close;
+    result.push({ time: data[i].time, value: sum / count });
   }
   return result;
+}
+
+function calculateRSI(data: any[], count: number) {
+    let result = [];
+    let gains = [];
+    let losses = [];
+    
+    for (let i = 1; i < data.length; i++) {
+        let diff = data[i].close - data[i-1].close;
+        gains.push(Math.max(0, diff));
+        losses.push(Math.max(0, -diff));
+    }
+
+    let avgGain = gains.slice(0, count).reduce((a, b) => a + b) / count;
+    let avgLoss = losses.slice(0, count).reduce((a, b) => a + b) / count;
+
+    for (let i = count; i < data.length; i++) {
+        let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+        result.push({ time: data[i].time, value: 100 - (100 / (100 + rs)) });
+
+        avgGain = (avgGain * (count - 1) + gains[i-1]) / count;
+        avgLoss = (avgLoss * (count - 1) + losses[i-1]) / count;
+    }
+    return result;
 }

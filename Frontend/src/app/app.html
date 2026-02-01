@@ -37,6 +37,22 @@
                </div>
             </div>
             
+            <!-- Watchlist Chips -->
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <span class="text-secondary small font-mono me-2 mt-1">WATCHLIST:</span>
+                <button *ngFor="let fav of watchlist" 
+                        (click)="analyze(fav)"
+                        class="btn btn-sm btn-outline-glass border-opacity-10 py-1 px-3 rounded-pill font-mono animate-fade-in d-flex align-items-center gap-2">
+                    {{ fav }}
+                    <i class="bi bi-x-circle opacity-50" (click)="$event.stopPropagation(); toggleWatchlist(fav)"></i>
+                </button>
+                <button class="btn btn-sm btn-dark bg-opacity-25 border-dashed border-secondary py-1 px-3 rounded-pill text-muted small" 
+                        *ngIf="symbol && !watchlist.includes(symbol.toUpperCase())"
+                        (click)="toggleWatchlist(symbol)">
+                    <i class="bi bi-plus-lg me-1"></i> Add {{ symbol.toUpperCase() }}
+                </button>
+            </div>
+            
             <div class="row g-3 align-items-end">
               <!-- Hisse Input -->
               <div class="col-md-3 position-relative">
