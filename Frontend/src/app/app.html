@@ -1,62 +1,49 @@
-<div class="container-fluid bg-dark text-light min-vh-100 p-0 font-sans">
+<div class="min-vh-100 p-0 font-sans">
   <!-- Header -->
-  <header class="bg-black py-3 px-4 shadow-lg sticky-top z-3">
+  <header class="py-3 px-4 sticky-top z-3" style="background: rgba(5,5,5,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.05);">
     <div class="container d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center gap-2">
-        <i class="bi bi-graph-up-arrow text-info fs-4"></i>
-        <h1 class="h4 m-0 fw-bold tracking-tight">BIST <span class="text-info">ANALYZER</span></h1>
+        <div class="bg-gradient-to-r from-cyan-500 to-blue-500 text-transparent bg-clip-text">
+            <i class="bi bi-graph-up-arrow text-info fs-4"></i>
+        </div>
+        <h1 class="h5 m-0 fw-bold tracking-tight text-white">BIST <span style="color: #00f2fe;">ANALYZER</span></h1>
       </div>
-      <div class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary fw-normal px-3 py-2">
-        v2.1 Pro
+      <div class="d-flex align-items-center gap-3">
+          <div class="text-secondary small font-mono d-none d-md-block">{{ loading ? 'PROCESSING...' : 'READY' }}</div>
+          <div class="badge bg-white bg-opacity-10 text-white border border-white border-opacity-10 fw-normal px-3 py-1 font-mono">
+            v3.0.1
+          </div>
       </div>
     </div>
   </header>
 
-  <!-- Market Ticker -->
-  <div *ngIf="marketSummary" class="bg-dark border-bottom border-secondary py-2">
-    <div class="container d-flex gap-4 justify-content-center justify-content-lg-start overflow-auto">
-      <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1 rounded">USD/TRY</span>
-        <span class="fw-bold text-white">{{ marketSummary.usdPrice | number:'1.2-2' }}</span>
-        <span class="small" [ngClass]="marketSummary.usdChange >= 0 ? 'text-success' : 'text-danger'">
-          <i class="bi" [ngClass]="marketSummary.usdChange >= 0 ? 'bi-arrow-up-short' : 'bi-arrow-down-short'"></i>
-          %{{ marketSummary.usdChange | number:'1.2-2' }}
-        </span>
-      </div>
-      <div class="d-flex align-items-center gap-2 border-start border-secondary ps-4">
-        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning px-2 py-1 rounded">ONS ALTIN</span>
-        <span class="fw-bold text-white">${{ marketSummary.goldPrice | number:'1.0-0' }}</span>
-        <span class="small" [ngClass]="marketSummary.goldChange >= 0 ? 'text-success' : 'text-danger'">
-          <i class="bi" [ngClass]="marketSummary.goldChange >= 0 ? 'bi-arrow-up-short' : 'bi-arrow-down-short'"></i>
-          %{{ marketSummary.goldChange | number:'1.2-2' }}
-        </span>
-      </div>
-    </div>
-  </div>
+  <!-- Market Ticker Component -->
+  <app-market-ticker [data]="marketSummary"></app-market-ticker>
 
   <div class="container py-5">
     
     <!-- Hero / Controls Section -->
     <div class="row justify-content-center mb-5">
       <div class="col-lg-10">
-        <div class="card bg-black border-secondary shadow-lg overflow-hidden">
-          <div class="card-body p-4 p-lg-5">
+        <div class="card-glass p-4 p-lg-5">
             
-            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-2">
-               <h5 class="text-white fw-light m-0">Hızlı Analiz</h5>
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-2" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+               <h5 class="text-white fw-bold m-0 d-flex align-items-center gap-2">
+                   <i class="bi bi-cpu text-primary"></i> Market Analysis
+               </h5>
                <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" id="compareSwitch" [(ngModel)]="comparisonMode">
-                  <label class="form-check-label text-warning small fw-bold" for="compareSwitch">KIYASLAMA MODU</label>
+                  <label class="form-check-label text-info small fw-bold font-mono" for="compareSwitch">COMPARISON MODE</label>
                </div>
             </div>
             
             <div class="row g-3 align-items-end">
               <!-- Hisse Input -->
               <div class="col-md-3 position-relative">
-                <label class="form-label small text-secondary fw-bold text-uppercase">Hisse Kodu</label>
+                <label class="form-label small text-secondary fw-bold text-uppercase font-mono">Stock Symbol</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-dark border-secondary text-secondary"><i class="bi bi-search"></i></span>
-                  <input type="text" class="form-control bg-dark border-secondary text-white fw-bold" 
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input type="text" class="form-control fw-bold font-mono" 
                          [(ngModel)]="symbol" 
                          (input)="onSearchInput(false)"
                          (blur)="hideSuggestions()"
@@ -65,12 +52,12 @@
                          autocomplete="off">
                 </div>
                 <!-- Suggestions Dropdown (Main) -->
-                <div *ngIf="showSuggestions && !isCompareSearch && filteredStocks.length > 0" class="position-absolute w-100 mt-1 shadow-lg rounded overflow-hidden z-3" style="background: #2b3035;">
+                <div *ngIf="showSuggestions && !isCompareSearch && filteredStocks.length > 0" class="position-absolute w-100 mt-1 shadow-lg rounded overflow-hidden z-3" style="background: #1e2329; border: 1px solid #333;">
                   <button *ngFor="let s of filteredStocks" 
-                          class="btn btn-dark w-100 text-start border-0 border-bottom border-secondary rounded-0 py-2 px-3"
+                          class="btn w-100 text-start border-0 border-bottom border-secondary rounded-0 py-2 px-3 text-white hover:bg-dark"
                           (click)="selectStock(s)">
                      <div class="d-flex justify-content-between">
-                       <span class="fw-bold text-info">{{ s.symbol }}</span>
+                       <span class="fw-bold text-info font-mono">{{ s.symbol }}</span>
                        <span class="text-secondary small">{{ s.name }}</span>
                      </div>
                   </button>
@@ -79,10 +66,10 @@
 
               <!-- Comparison Input (Conditional) -->
               <div class="col-md-3 position-relative" *ngIf="comparisonMode">
-                <label class="form-label small text-secondary fw-bold text-uppercase text-warning">Kıyasla (VS)</label>
+                <label class="form-label small text-secondary fw-bold text-uppercase font-mono text-warning">Vs Symbol</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-dark border-secondary text-warning"><i class="bi bi-arrow-left-right"></i></span>
-                  <input type="text" class="form-control bg-dark border-secondary text-white fw-bold" 
+                  <span class="input-group-text text-warning"><i class="bi bi-arrow-left-right"></i></span>
+                  <input type="text" class="form-control fw-bold font-mono" 
                          [(ngModel)]="compareSymbol" 
                          (input)="onSearchInput(true)"
                          (blur)="hideSuggestions()"
@@ -91,12 +78,12 @@
                          autocomplete="off">
                 </div>
                 <!-- Suggestions Dropdown (Compare) -->
-                <div *ngIf="showSuggestions && isCompareSearch && filteredStocks.length > 0" class="position-absolute w-100 mt-1 shadow-lg rounded overflow-hidden z-3" style="background: #2b3035;">
+                <div *ngIf="showSuggestions && isCompareSearch && filteredStocks.length > 0" class="position-absolute w-100 mt-1 shadow-lg rounded overflow-hidden z-3" style="background: #1e2329; border: 1px solid #333;">
                   <button *ngFor="let s of filteredStocks" 
-                          class="btn btn-dark w-100 text-start border-0 border-bottom border-secondary rounded-0 py-2 px-3"
+                          class="btn w-100 text-start border-0 border-bottom border-secondary rounded-0 py-2 px-3 text-white hover:bg-dark"
                           (click)="selectStock(s)">
                      <div class="d-flex justify-content-between">
-                       <span class="fw-bold text-warning">{{ s.symbol }}</span>
+                       <span class="fw-bold text-warning font-mono">{{ s.symbol }}</span>
                        <span class="text-secondary small">{{ s.name }}</span>
                      </div>
                   </button>
@@ -105,43 +92,42 @@
               
               <!-- Birim Seçimi -->
               <div class="col-md-2" *ngIf="!comparisonMode">
-                <label class="form-label small text-secondary fw-bold text-uppercase">Para Birimi</label>
-                <select class="form-select bg-dark border-secondary text-white" [(ngModel)]="unit">
+                <label class="form-label small text-secondary fw-bold text-uppercase font-mono">Currency</label>
+                <select class="form-select font-mono" [(ngModel)]="unit">
                   <option value="USD">USD ($)</option>
-                  <option value="GOLD">GOLD (Altın)</option>
-                  <option value="TRY">TRY (TL)</option>
+                  <option value="GOLD">GOLD (AU)</option>
+                  <option value="TRY">TRY (₺)</option>
                 </select>
               </div>
 
               <!-- Tarih Aralığı -->
               <div class="col-md-3">
-                <label class="form-label small text-secondary fw-bold text-uppercase">Tarih Aralığı</label>
+                <label class="form-label small text-secondary fw-bold text-uppercase font-mono">Timeframe</label>
                 <div class="d-flex gap-1">
-                   <button class="btn btn-outline-secondary btn-sm flex-fill" (click)="setPeriod(6)">6 Ay</button>
-                   <button class="btn btn-outline-secondary btn-sm flex-fill active" (click)="setPeriod(12)">1 Yıl</button>
-                   <button class="btn btn-outline-secondary btn-sm flex-fill" (click)="setPeriod(36)">3 Yıl</button>
+                   <button class="btn btn-outline-glass btn-sm flex-fill font-mono" (click)="setPeriod(6)">6M</button>
+                   <button class="btn btn-outline-glass btn-sm flex-fill font-mono active" (click)="setPeriod(12)">1Y</button>
+                   <button class="btn btn-outline-glass btn-sm flex-fill font-mono" (click)="setPeriod(36)">3Y</button>
                 </div>
               </div>
 
               <!-- Aksiyon Butonları -->
               <div class="col-md-1 d-grid">
-                <button class="btn btn-info fw-bold py-2 shadow-info" (click)="analyze()" [disabled]="loading || !symbol">
-                  <i class="bi" [ngClass]="loading ? 'bi-hourglass-split' : 'bi-play-fill'"></i>
+                <button class="btn btn-neon py-2" (click)="analyze()" [disabled]="loading || !symbol">
+                  <i class="bi" [ngClass]="loading ? 'bi-hourglass-split' : 'bi-search'"></i>
                 </button>
               </div>
             </div>
 
             <!-- Altın Liderleri Butonu -->
-            <div class="mt-4 pt-3 border-top border-secondary d-flex justify-content-between align-items-center">
+            <div class="mt-4 pt-3 d-flex justify-content-between align-items-center" style="border-top: 1px solid rgba(255,255,255,0.05);">
                <span class="text-secondary small">
-                 <i class="bi bi-info-circle me-1"></i> BIST 30 hisselerini altın bazında karşılaştırın.
+                 <i class="bi bi-info-circle me-1"></i> Compare BIST 30 stocks against Gold.
                </span>
-               <button class="btn btn-outline-warning btn-sm fw-bold px-4 rounded-pill hover-scale" (click)="loadLeaders()">
-                  <i class="bi bi-trophy-fill me-2"></i> ALTIN KRALLARI
+               <button class="btn btn-sm text-warning fw-bold px-4 rounded-pill border border-warning border-opacity-25 hover:bg-warning hover:text-black transition-all font-mono" (click)="loadLeaders()">
+                  <i class="bi bi-trophy-fill me-2"></i> GOLD LEADERS
                </button>
             </div>
 
-          </div>
         </div>
       </div>
     </div>
@@ -152,54 +138,17 @@
       <div>{{ error }}</div>
     </div>
 
-    <!-- LEADERBOARD SECTION -->
-    <div *ngIf="showLeaders" class="animate-fade-in mb-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="fw-bold text-warning m-0"><i class="bi bi-award me-2"></i>Altın Bazlı Kazandıranlar</h3>
-            <button class="btn btn-sm btn-dark border-secondary rounded-circle" (click)="showLeaders = false"><i class="bi bi-x-lg"></i></button>
-        </div>
-
-        <div *ngIf="loadingLeaders" class="text-center py-5">
-            <div class="spinner-grow text-warning mb-3" style="width: 3rem; height: 3rem;"></div>
-            <h5 class="text-white fw-light">Piyasa verileri taranıyor...</h5>
-        </div>
-
-        <div *ngIf="!loadingLeaders" class="row g-3">
-             <div class="col-md-3 col-sm-6" *ngFor="let stock of topPerformers; let i = index">
-                 <div class="card h-100 border-secondary bg-dark hover-scale">
-                     <div class="card-body text-center position-relative">
-                         <div class="position-absolute top-0 start-0 m-2 badge rounded-pill" 
-                              [ngClass]="i < 3 ? 'bg-warning text-dark' : 'bg-secondary text-white'">#{{i+1}}</div>
-                         <h4 class="fw-bold text-white mt-2">{{ stock.symbol }}</h4>
-                         <div class="display-6 fw-bold my-3" [ngClass]="stock.changePercentage >= 0 ? 'text-success' : 'text-danger'">
-                             %{{ stock.changePercentage | number:'1.1-1' }}
-                         </div>
-                         <div class="small text-secondary">Yıllık Altın Getirisi</div>
-                     </div>
-                 </div>
-             </div>
-        </div>
-    </div>
+    <!-- LEADERBOARD COMPONENT -->
+    <app-leaderboard *ngIf="showLeaders" [data]="topPerformers" [loading]="loadingLeaders" (close)="showLeaders = false"></app-leaderboard>
 
     <!-- CHART SECTION -->
-    <div class="row justify-content-center" *ngIf="result && !showLeaders">
-       <div class="col-lg-10">
-          <div class="card bg-black border-secondary shadow-lg">
-             <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
-                <div>
-                   <h5 class="text-white m-0 fw-bold">{{ result.symbol }} <span *ngIf="comparisonMode && compareSymbol">vs {{ compareSymbol }}</span></h5>
-                   <small class="text-secondary">{{ comparisonMode ? 'Yüzdesel Getiri Karşılaştırması' : result.unit + ' Bazlı Fiyat Analizi' }}</small>
-                </div>
-                <div class="badge" [ngClass]="result.changePercentage >= 0 ? 'bg-success' : 'bg-danger'">
-                   {{ result.changePercentage >= 0 ? '+' : '' }}%{{ result.changePercentage | number:'1.2-2' }}
-                </div>
-             </div>
-             <div class="card-body p-0">
-                <!-- TradingView Container -->
-                <div #chartContainer style="height: 450px; width: 100%;"></div>
-             </div>
-          </div>
-       </div>
+    <div class="mt-4" *ngIf="chartData.length > 0 && !showLeaders">
+       <app-stock-chart 
+          [data]="chartData"
+          [aiComment]="aiComment"
+          [loadingAi]="loadingAi"
+          (requestAi)="fetchAiComment($event)">
+       </app-stock-chart>
     </div>
 
   </div>

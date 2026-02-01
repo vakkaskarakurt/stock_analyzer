@@ -46,4 +46,8 @@ export class StockService {
   getStocks(): Observable<any[]> {
     return this.http.get<any[]>('/stocks.json');
   }
+
+  getAiComment(symbol: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/ai-comment?symbol=${symbol}`);
+  }
 }

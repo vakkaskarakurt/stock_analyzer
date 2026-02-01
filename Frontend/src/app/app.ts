@@ -1,22 +1,21 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StockService, AnalysisResult, StockSummary } from './services/stock.service';
-import { createChart, IChartApi, ISeriesApi, ColorType, LineSeries, CandlestickSeries } from 'lightweight-charts';
+import { MarketTickerComponent } from './components/market-ticker.component';
+import { LeaderboardComponent } from './components/leaderboard.component';
+import { ChartComponent } from './components/chart.component';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MarketTickerComponent, LeaderboardComponent, ChartComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
-export class AppComponent implements OnDestroy {
-  @ViewChild('chartContainer') chartContainer!: ElementRef;
-  private chart: IChartApi | null = null;
-
+export class AppComponent {
   symbol: string = '';
   compareSymbol: string = '';
   
@@ -31,13 +30,22 @@ export class AppComponent implements OnDestroy {
   endDate: string = '';
   loading: boolean = false;
   error: string | null = null;
-  result: AnalysisResult | null = null;
   
+  // Results
+  chartData: AnalysisResult[] = [];
+  
+  // Dashboard Data
   topPerformers: StockSummary[] = [];
   marketSummary: any = null;
+  
+  // UI Flags
   loadingLeaders: boolean = false;
   showLeaders: boolean = false;
   comparisonMode: boolean = false;
+
+  // AI
+  aiComment: string | null = null;
+  loadingAi: boolean = false;
 
   constructor(private stockService: StockService) {
     this.loadMarketSummary();
@@ -49,18 +57,14 @@ export class AppComponent implements OnDestroy {
     this.startDate = start.toISOString().split('T')[0];
   }
 
-  ngOnDestroy() {
-    if (this.chart) {
-      this.chart.remove();
-    }
-  }
-
   analyze() {
     if (!this.symbol) return;
 
     this.loading = true;
     this.error = null;
     this.showLeaders = false;
+    this.chartData = [];
+    this.aiComment = null; // Reset comment
 
     const mainReq = this.stockService.analyze(this.symbol, this.unit, this.startDate, this.endDate);
     const compareReq = (this.comparisonMode && this.compareSymbol) 
@@ -75,11 +79,10 @@ export class AppComponent implements OnDestroy {
           return;
         }
 
-        this.result = mainData;
-        const datasets = [mainData];
-        if (compareData) datasets.push(compareData as AnalysisResult);
+        const results = [mainData];
+        if (compareData) results.push(compareData as AnalysisResult);
         
-        setTimeout(() => this.renderChart(datasets), 100);
+        this.chartData = results;
         this.loading = false;
       },
       error: (err) => {
@@ -89,66 +92,18 @@ export class AppComponent implements OnDestroy {
     });
   }
 
-  private renderChart(results: AnalysisResult[]) {
-    if (!this.chartContainer) return;
-
-    if (this.chart) {
-      this.chart.remove();
-      this.chart = null;
-    }
-
-    this.chart = createChart(this.chartContainer.nativeElement, {
-      layout: {
-        background: { type: ColorType.Solid, color: '#111111' },
-        textColor: '#d1d5db',
+  fetchAiComment(symbol: string) {
+    this.loadingAi = true;
+    this.stockService.getAiComment(symbol).subscribe({
+      next: (res) => {
+        this.aiComment = res.comment;
+        this.loadingAi = false;
       },
-      grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
-      },
-      width: this.chartContainer.nativeElement.clientWidth,
-      height: 400,
+      error: (err) => {
+        console.error(err);
+        this.loadingAi = false;
+      }
     });
-
-    const isComparison = results.length > 1;
-
-    if (isComparison) {
-      // Comparison: Line Charts
-      results.forEach((res, index) => {
-        const lineSeries = this.chart!.addSeries(LineSeries, {
-          color: index === 0 ? '#0dcaf0' : '#ffc107',
-          lineWidth: 2,
-          title: res.symbol
-        });
-        
-        const firstPrice = res.prices[0].close;
-        const data = res.prices.map(p => ({
-          time: p.date.split('T')[0],
-          value: ((p.close - firstPrice) / firstPrice) * 100
-        }));
-        lineSeries.setData(data);
-      });
-    } else {
-      // Single: Candlestick Chart
-      const candleSeries = this.chart.addSeries(CandlestickSeries, {
-        upColor: '#26a69a', 
-        downColor: '#ef5350', 
-        borderVisible: false, 
-        wickUpColor: '#26a69a', 
-        wickDownColor: '#ef5350' 
-      });
-
-      const data = results[0].prices.map(p => ({
-        time: p.date.split('T')[0],
-        open: Number(p.open),
-        high: Number(p.high),
-        low: Number(p.low),
-        close: Number(p.close)
-      }));
-      candleSeries.setData(data);
-    }
-
-    this.chart.timeScale().fitContent();
   }
 
   // --- Helpers ---

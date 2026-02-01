@@ -1,1 +1,120 @@
-/* You can add global styles to this file, and also import other style files */
+/* Modern Reset & Base */
+:root {
+    --bg-deep: #050505;
+    --glass-bg: rgba(22, 22, 24, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --neon-blue: #00f2fe;
+    --neon-purple: #4facfe;
+    --neon-green: #00dbde;
+    --text-main: #ffffff;
+    --text-muted: #94a3b8;
+}
+
+body {
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    /* Aurora Background Effect */
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(79, 70, 229, 0.15), transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.1), transparent 40%);
+    background-attachment: fixed; /* Parallax effect */
+    min-height: 100vh;
+}
+
+/* Typography Overrides */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glassmorphism Card */
+.card-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    border-radius: 16px;
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.card-glass:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Inputs & Form Elements */
+.form-control, .form-select, .input-group-text {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: white !important;
+    backdrop-filter: blur(10px);
+}
+
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.3);
+    border-color: var(--neon-blue) !important;
+}
+
+/* Custom Buttons */
+.btn-neon {
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    border: none;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+    transition: all 0.3s ease;
+}
+
+.btn-neon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 114, 255, 0.6);
+    color: white;
+}
+
+.btn-outline-glass {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: var(--text-muted);
+}
+.btn-outline-glass:hover, .btn-outline-glass.active {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border-color: white;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0b0b0b; 
+}
+::-webkit-scrollbar-thumb {
+    background: #333; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555; 
+}
+
+/* Animation Utilities */
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Chart Tooltip overrides (TradingView) */
+.tv-lightweight-charts {
+    border-radius: 0 0 16px 16px;
+    overflow: hidden;
+}
