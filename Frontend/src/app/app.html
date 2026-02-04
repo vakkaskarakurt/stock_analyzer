@@ -106,14 +106,15 @@
                 </div>
               </div>
               
-              <!-- Birim Seçimi -->
+              <!-- Birim Seçimi - Sadece Altın -->
               <div class="col-md-2" *ngIf="!comparisonMode">
-                <label class="form-label small text-secondary fw-bold text-uppercase font-mono">Currency</label>
-                <select class="form-select font-mono" [(ngModel)]="unit">
-                  <option value="USD">USD ($)</option>
-                  <option value="GOLD">GOLD (AU)</option>
-                  <option value="TRY">TRY (₺)</option>
-                </select>
+                <label class="form-label small text-secondary fw-bold text-uppercase font-mono">Birim</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-warning bg-opacity-10 text-warning border-warning border-opacity-25">
+                    <i class="bi bi-coin"></i>
+                  </span>
+                  <input type="text" class="form-control font-mono fw-bold text-warning" value="ALTIN (AU)" disabled>
+                </div>
               </div>
 
               <!-- Tarih Aralığı -->
@@ -126,10 +127,13 @@
                 </div>
               </div>
 
-              <!-- Aksiyon Butonları -->
-              <div class="col-md-1 d-grid">
-                <button class="btn btn-neon py-2" (click)="analyze()" [disabled]="loading || !symbol">
-                  <i class="bi" [ngClass]="loading ? 'bi-hourglass-split' : 'bi-search'"></i>
+              <!-- Aksiyon Butonu - Analiz + Tahmin Birlikte -->
+              <div class="col-md-3">
+                <button class="btn btn-neon py-2 w-100 d-flex align-items-center justify-content-center gap-2"
+                        (click)="analyzeWithPrediction()"
+                        [disabled]="loading || loadingPrediction || !symbol">
+                  <i class="bi" [ngClass]="(loading || loadingPrediction) ? 'bi-hourglass-split' : 'bi-graph-up-arrow'"></i>
+                  <span class="fw-bold">{{ (loading || loadingPrediction) ? 'HESAPLANIYOR...' : 'ANALİZ + TAHMİN' }}</span>
                 </button>
               </div>
             </div>
@@ -148,10 +152,106 @@
       </div>
     </div>
 
+    <!-- TOP PERFORMERS - Ana Ekranda Görünür -->
+    <app-top-performers
+      [data]="topPerformers"
+      [loading]="loadingTopPerformers"
+      (stockSelected)="onTopPerformerSelect($event)"
+      (showAll)="loadLeaders()">
+    </app-top-performers>
+
     <!-- Error Alert -->
     <div *ngIf="error" class="alert alert-danger bg-danger bg-opacity-10 border-danger text-danger d-flex align-items-center shadow-sm mb-4">
-      <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i> 
+      <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
       <div>{{ error }}</div>
+    </div>
+
+    <!-- PREDICTION RESULT CARD -->
+    <div *ngIf="predictionResult" class="card-glass p-4 mb-4 animate-fade-in">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-white fw-bold m-0 d-flex align-items-center gap-2">
+          <i class="bi bi-robot text-warning"></i> LSTM Tahmin
+          <span class="badge bg-warning text-dark font-mono small">{{ predictionResult.modelInfo }}</span>
+        </h5>
+        <button class="btn btn-sm btn-outline-secondary rounded-circle" (click)="closePrediction()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="row g-4">
+        <!-- Symbol & Trend -->
+        <div class="col-md-3">
+          <div class="card bg-dark bg-opacity-50 border-0 h-100">
+            <div class="card-body text-center">
+              <h2 class="display-6 fw-bold text-white mb-2">{{ predictionResult.symbol }}</h2>
+              <div class="d-flex justify-content-center align-items-center gap-2">
+                <i class="bi fs-2" [ngClass]="[getTrendIcon(), getTrendColor()]"></i>
+                <span class="fs-4 fw-bold" [ngClass]="getTrendColor()">
+                  {{ predictionResult.trend === 'up' ? 'YUKARI' : predictionResult.trend === 'down' ? 'AŞAĞI' : 'YATAY' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="col-md-3">
+          <div class="card bg-dark bg-opacity-50 border-0 h-100">
+            <div class="card-body">
+              <div class="text-secondary small font-mono mb-1">TAHMİN DEĞİŞİM</div>
+              <div class="fs-3 fw-bold" [ngClass]="predictionResult.predictedChangePercent >= 0 ? 'text-success' : 'text-danger'">
+                {{ predictionResult.predictedChangePercent >= 0 ? '+' : '' }}{{ predictionResult.predictedChangePercent | number:'1.2-2' }}%
+              </div>
+              <div class="text-muted small mt-2">{{ predictionDays }} gün sonra</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Price - Altın -->
+        <div class="col-md-3">
+          <div class="card bg-dark bg-opacity-50 border-0 h-100">
+            <div class="card-body">
+              <div class="text-secondary small font-mono mb-1">SON FİYAT (ALTIN)</div>
+              <div class="fs-3 fw-bold text-warning">
+                <i class="bi bi-coin me-1"></i>{{ predictionResult.lastPriceGold | number:'1.6-6' }}
+              </div>
+              <div class="text-muted small mt-2 font-mono">AU / Hisse</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confidence -->
+        <div class="col-md-3">
+          <div class="card bg-dark bg-opacity-50 border-0 h-100">
+            <div class="card-body">
+              <div class="text-secondary small font-mono mb-1">GÜVEN SKORU</div>
+              <div class="fs-3 fw-bold" [ngClass]="predictionResult.confidence >= 0.7 ? 'text-success' : predictionResult.confidence >= 0.5 ? 'text-warning' : 'text-danger'">
+                %{{ predictionResult.confidence * 100 | number:'1.0-0' }}
+              </div>
+              <div class="progress mt-2" style="height: 6px;">
+                <div class="progress-bar"
+                     [ngClass]="predictionResult.confidence >= 0.7 ? 'bg-success' : predictionResult.confidence >= 0.5 ? 'bg-warning' : 'bg-danger'"
+                     [style.width.%]="predictionResult.confidence * 100"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Predicted Prices Preview - Altın -->
+      <div class="mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="text-secondary small font-mono mb-2">TAHMİN EDİLEN ALTIN DEĞERLERİ (İlk 5 Gün)</div>
+        <div class="d-flex flex-wrap gap-2">
+          <div *ngFor="let pred of predictionResult.predictions.slice(0, 5)"
+               class="badge bg-warning bg-opacity-10 text-white px-3 py-2 font-mono">
+            <span class="text-muted">{{ pred.date }}</span>
+            <span class="ms-2 text-warning"><i class="bi bi-coin"></i> {{ pred.priceGold | number:'1.6-6' }}</span>
+          </div>
+          <div *ngIf="predictionResult.predictions.length > 5" class="badge bg-warning bg-opacity-25 text-warning px-3 py-2 font-mono">
+            +{{ predictionResult.predictions.length - 5 }} gün daha...
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- LEADERBOARD COMPONENT -->
@@ -159,8 +259,9 @@
 
     <!-- CHART SECTION -->
     <div class="mt-4" *ngIf="chartData.length > 0 && !showLeaders">
-       <app-stock-chart 
-          [data]="chartData">
+       <app-stock-chart
+          [data]="chartData"
+          [prediction]="predictionResult">
        </app-stock-chart>
     </div>
 

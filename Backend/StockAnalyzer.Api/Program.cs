@@ -20,7 +20,10 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IStockService, StockService>();
 builder.Services.AddHostedService<MarketWorker>();
 
-// 5. CORS
+// 5. Prediction Service (Python LSTM)
+builder.Services.AddHttpClient<IPredictionService, PredictionService>();
+
+// 6. CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>

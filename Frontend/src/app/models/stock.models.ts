@@ -26,6 +26,28 @@ export interface MarketSummary {
   goldChange: number;
   bist100Price: number;
   bist100Change: number;
-  nasdaqPrice: number;
-  nasdaqChange: number;
+}
+
+export interface PredictionPoint {
+  date: string;
+  priceGold: number;
+  priceUsd: number;
+}
+
+export interface HistoricalPoint {
+  date: string;
+  priceGold: number;
+  priceUsd: number;
+}
+
+export interface PredictionResult {
+  symbol: string;
+  predictions: PredictionPoint[];
+  historical: HistoricalPoint[];
+  confidence: number;
+  trend: 'up' | 'down' | 'neutral';
+  modelInfo: string;
+  lastPriceUsd: number;
+  lastPriceGold: number;
+  predictedChangePercent: number;
 }

@@ -8,10 +8,12 @@ namespace StockAnalyzer.Api.Controllers;
 public class StockController : ControllerBase
 {
     private readonly IStockService _stockService;
+    private readonly IPredictionService _predictionService;
 
-    public StockController(IStockService stockService)
+    public StockController(IStockService stockService, IPredictionService predictionService)
     {
         _stockService = stockService;
+        _predictionService = predictionService;
     }
 
     [HttpGet("analyze")]
@@ -39,6 +41,16 @@ public class StockController : ControllerBase
     public async Task<IActionResult> GetMarketSummary()
     {
         var result = await _stockService.GetMarketSummaryAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("predict")]
+    public async Task<IActionResult> Predict(
+        [FromQuery] string symbol,
+        [FromQuery] int days = 30,
+        [FromQuery] int lookback = 60)
+    {
+        var result = await _predictionService.PredictAsync(symbol, days, lookback);
         return Ok(result);
     }
 }

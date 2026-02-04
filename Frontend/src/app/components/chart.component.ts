@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, AfterVie
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { createChart, IChartApi, ColorType, LineSeries, CandlestickSeries } from 'lightweight-charts';
-import { AnalysisResult, StockPrice } from '../models/stock.models';
+import { AnalysisResult, StockPrice, PredictionResult } from '../models/stock.models';
 
 @Component({
   selector: 'app-stock-chart',
@@ -18,14 +18,18 @@ import { AnalysisResult, StockPrice } from '../models/stock.models';
                      <span class="fs-4">{{ data[0].symbol }}</span>
                      <span *ngIf="data.length > 1" class="text-muted fs-6">vs {{ data[1].symbol }}</span>
                    </h5>
-                   <small class="text-muted font-mono">
-                     {{ data.length > 1 ? 'COMPARISON VIEW' : data[0].unit + ' MARKET VIEW' }}
+                   <small class="text-warning font-mono">
+                     <i class="bi bi-coin me-1"></i>{{ data.length > 1 ? 'KARŞILAŞTIRMA (ALTIN BAZLI)' : 'ALTIN BAZLI GRAFİK' }}
                    </small>
                 </div>
                 <div class="d-flex gap-3 align-items-center">
                     <!-- Indicators Toggle -->
                     <div class="d-flex gap-2 me-2" *ngIf="data.length === 1">
-                        <div class="form-check form-switch">
+                        <div class="form-check form-switch" *ngIf="prediction">
+                            <input class="form-check-input" type="checkbox" id="predSwitch" [(ngModel)]="showPrediction" (change)="renderChart()">
+                            <label class="form-check-label text-warning small fw-bold" for="predSwitch">TAHMİN</label>
+                        </div>
+                        <div class="form-check form-switch" [class.border-start]="prediction" [class.border-secondary]="prediction" [class.ps-4]="prediction">
                             <input class="form-check-input" type="checkbox" id="smaSwitch" [(ngModel)]="showSMA" (change)="renderChart()">
                             <label class="form-check-label text-secondary small fw-bold" for="smaSwitch">SMA 20</label>
                         </div>
@@ -51,19 +55,22 @@ import { AnalysisResult, StockPrice } from '../models/stock.models';
 })
 export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
   @Input() data: AnalysisResult[] = [];
+  @Input() prediction: PredictionResult | null = null;
 
   @ViewChild('chartContainer') chartContainer!: ElementRef;
-  
+
   private chart: IChartApi | null = null;
   showSMA: boolean = false;
   showRSI: boolean = false;
+  showPrediction: boolean = true;
 
   ngAfterViewInit() {
     this.renderChart();
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['data'] && !changes['data'].firstChange) {
+    if ((changes['data'] && !changes['data'].firstChange) ||
+        (changes['prediction'] && !changes['prediction'].firstChange)) {
       this.renderChart();
     }
   }
@@ -144,13 +151,44 @@ export class ChartComponent implements AfterViewInit, OnDestroy, OnChanges {
             title: 'RSI 14',
             priceScaleId: 'rsi-scale' // Separate scale
         });
-        
+
         this.chart.priceScale('rsi-scale').applyOptions({
             scaleMargins: { top: 0.8, bottom: 0 }, // Bottom 20%
             borderColor: 'rgba(255, 255, 255, 0.1)',
         });
-        
+
         rsiSeries.setData(rsiData);
+      }
+
+      // Tahmin çizgisi ekle (kesikli çizgi)
+      if (this.showPrediction && this.prediction && this.prediction.predictions.length > 0) {
+        // Son gerçek veri noktasından başlayarak tahmin çizgisi
+        const lastRealDate = chartData[chartData.length - 1].time;
+        const lastRealPrice = chartData[chartData.length - 1].close;
+
+        // Tahmin verilerini hazırla - son gerçek noktadan başla
+        const predictionData: { time: string; value: number }[] = [
+          { time: lastRealDate, value: lastRealPrice }
+        ];
+
+        this.prediction.predictions.forEach(p => {
+          predictionData.push({
+            time: p.date.split('T')[0],
+            value: p.priceGold
+          });
+        });
+
+        const predictionSeries = this.chart.addSeries(LineSeries, {
+          color: '#fbbf24', // Altın rengi
+          lineWidth: 2,
+          lineStyle: 2, // Kesikli çizgi (dashed)
+          title: 'TAHMİN',
+          crosshairMarkerVisible: true,
+          lastValueVisible: true,
+          priceLineVisible: true
+        });
+
+        predictionSeries.setData(predictionData);
       }
     }
 

@@ -66,7 +66,7 @@ import { StockSummary } from '../services/stock.service';
             <!-- Full Ranking Table (Glass Table) -->
             <div class="card-glass border-0 overflow-hidden mb-5">
                 <div class="card-header bg-transparent border-bottom border-white border-opacity-10 py-3 px-4">
-                    <h6 class="m-0 text-muted font-mono small tracking-widest">GLOBAL MARKET PERFORMANCE (GOLD ADJUSTED)</h6>
+                    <h6 class="m-0 text-muted font-mono small tracking-widest">BIST PERFORMANCE (GOLD ADJUSTED)</h6>
                 </div>
                 <div class="table-responsive" style="max-height: 500px;">
                     <table class="table table-dark table-hover mb-0 align-middle glass-table">
@@ -85,11 +85,7 @@ import { StockSummary } from '../services/stock.service';
                                 <td class="py-3">
                                     <div class="d-flex align-items-center gap-2">
                                         <span class="fw-bold text-white">{{ item.symbol }}</span>
-                                        <span class="badge font-mono" 
-                                              [ngClass]="isUsStock(item.symbol) ? 'bg-primary bg-opacity-10 text-primary' : 'bg-info bg-opacity-10 text-info'"
-                                              style="font-size: 0.6rem;">
-                                            {{ isUsStock(item.symbol) ? 'NASDAQ' : 'BIST' }}
-                                        </span>
+                                        <span class="badge font-mono bg-info bg-opacity-10 text-info" style="font-size: 0.6rem;">BIST</span>
                                     </div>
                                 </td>
                                 <td class="text-end pe-4 py-3 font-mono fs-5">
@@ -146,10 +142,4 @@ export class LeaderboardComponent {
   @Input() data: StockSummary[] = [];
   @Input() loading: boolean = false;
   @Output() close = new EventEmitter<void>();
-
-  private usStocks = new Set(['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'AMD', 'INTC', 'IBM', 'ORCL']);
-
-  isUsStock(symbol: string): boolean {
-    return this.usStocks.has(symbol);
-  }
 }

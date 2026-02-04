@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "npx concurrently -k --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,magenta\" \"cd Backend/StockAnalyzer.Api && dotnet run\" \"cd Frontend && npm start\""
+    "start": "npx concurrently -k --names \"BACKEND,FRONTEND,PREDICTION\" --prefix-colors \"blue,magenta,yellow\" \"cd Backend/StockAnalyzer.Api && dotnet run\" \"cd Frontend && npm start\" \"cd Prediction && python -m uvicorn main:app --reload --port 8000\""
   },
   "dependencies": {
     "playwright": "^1.58.1"

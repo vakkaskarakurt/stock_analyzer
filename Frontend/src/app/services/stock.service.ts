@@ -3,9 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import * as signalR from '@microsoft/signalr';
 import { environment } from '../../environments/environment';
-import { AnalysisResult, StockSummary, MarketSummary } from '../models/stock.models';
+import { AnalysisResult, StockSummary, MarketSummary, PredictionResult } from '../models/stock.models';
 
-export type { AnalysisResult, StockSummary, MarketSummary };
+export type { AnalysisResult, StockSummary, MarketSummary, PredictionResult };
 
 @Injectable({
   providedIn: 'root'
@@ -45,5 +45,11 @@ export class StockService {
 
   getStocks(): Observable<any[]> {
     return this.http.get<any[]>('/stocks.json');
+  }
+
+  predict(symbol: string, days: number = 30, lookback: number = 60): Observable<PredictionResult> {
+    return this.http.get<PredictionResult>(
+      `${this.apiUrl}/predict?symbol=${symbol}&days=${days}&lookback=${lookback}`
+    );
   }
 }

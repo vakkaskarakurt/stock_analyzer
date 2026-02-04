@@ -21,14 +21,6 @@ public class StockService : IStockService
     private const string SYMBOL_USD = "USDTRY=X";
     private const string SYMBOL_GOLD = "GC=F";
     private const string SYMBOL_BIST100 = "XU100.IS";
-    private const string SYMBOL_NASDAQ = "^IXIC";
-
-    // Known non-BIST symbols to prevent auto-appending .IS
-    private static readonly HashSet<string> _nonBistSymbols = new() 
-    { 
-        "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "NFLX", "AMD", "INTC", 
-        "IBM", "ORCL", "PLTR", "COIN", "QCOM", "BTC-USD", "ETH-USD", "XRP-USD" 
-    };
 
     public StockService(IYahooClient yahooClient, IMemoryCache cache, IConfiguration configuration, ILogger<StockService> logger)
     {
@@ -46,36 +38,29 @@ public class StockService : IStockService
         var usdTask = _yahooClient.GetChartDataAsync(SYMBOL_USD, DateTime.Now.AddDays(-5), DateTime.Now);
         var goldTask = _yahooClient.GetChartDataAsync(SYMBOL_GOLD, DateTime.Now.AddDays(-5), DateTime.Now);
         var bistTask = _yahooClient.GetChartDataAsync(SYMBOL_BIST100, DateTime.Now.AddDays(-5), DateTime.Now);
-        var nasdaqTask = _yahooClient.GetChartDataAsync(SYMBOL_NASDAQ, DateTime.Now.AddDays(-5), DateTime.Now);
-        
+
         var usdPrevTask = _yahooClient.GetChartDataAsync(SYMBOL_USD, DateTime.Now.AddDays(-10), DateTime.Now.AddDays(-5));
         var goldPrevTask = _yahooClient.GetChartDataAsync(SYMBOL_GOLD, DateTime.Now.AddDays(-10), DateTime.Now.AddDays(-5));
         var bistPrevTask = _yahooClient.GetChartDataAsync(SYMBOL_BIST100, DateTime.Now.AddDays(-10), DateTime.Now.AddDays(-5));
-        var nasdaqPrevTask = _yahooClient.GetChartDataAsync(SYMBOL_NASDAQ, DateTime.Now.AddDays(-10), DateTime.Now.AddDays(-5));
 
-        await Task.WhenAll(usdTask, goldTask, bistTask, nasdaqTask, usdPrevTask, goldPrevTask, bistPrevTask, nasdaqPrevTask);
+        await Task.WhenAll(usdTask, goldTask, bistTask, usdPrevTask, goldPrevTask, bistPrevTask);
 
         var usdData = await usdTask;
         var goldData = await goldTask;
         var bistData = await bistTask;
-        var nasdaqData = await nasdaqTask;
 
         var usdPrevData = await usdPrevTask;
         var goldPrevData = await goldPrevTask;
         var bistPrevData = await bistPrevTask;
-        var nasdaqPrevData = await nasdaqPrevTask;
 
         decimal usd = usdData.Any() ? usdData.Last().Close : 0;
         decimal usdPrev = usdPrevData.Any() ? usdPrevData.Last().Close : 0;
-        
+
         decimal gold = goldData.Any() ? goldData.Last().Close : 0;
         decimal goldPrev = goldPrevData.Any() ? goldPrevData.Last().Close : 0;
 
         decimal bist = bistData.Any() ? bistData.Last().Close : 0;
         decimal bistPrev = bistPrevData.Any() ? bistPrevData.Last().Close : 0;
-
-        decimal nasdaq = nasdaqData.Any() ? nasdaqData.Last().Close : 0;
-        decimal nasdaqPrev = nasdaqPrevData.Any() ? nasdaqPrevData.Last().Close : 0;
 
         var result = new MarketSummary
         {
@@ -84,9 +69,7 @@ public class StockService : IStockService
             GoldPrice = gold,
             GoldChange = goldPrev != 0 ? ((gold - goldPrev) / goldPrev) * 100 : 0,
             Bist100Price = bist,
-            Bist100Change = bistPrev != 0 ? ((bist - bistPrev) / bistPrev) * 100 : 0,
-            NasdaqPrice = nasdaq,
-            NasdaqChange = nasdaqPrev != 0 ? ((nasdaq - nasdaqPrev) / nasdaqPrev) * 100 : 0
+            Bist100Change = bistPrev != 0 ? ((bist - bistPrev) / bistPrev) * 100 : 0
         };
 
         if (usd != 0) _cache.Set(CACHE_KEY, result, TimeSpan.FromMinutes(5));
@@ -99,8 +82,8 @@ public class StockService : IStockService
         const string CACHE_KEY = "TopPerformers_Gold";
         if (_cache.TryGetValue(CACHE_KEY, out List<StockSummary> cachedResult)) return cachedResult;
 
-        var stockList = _configuration.GetSection("StockSettings:PopularStocks").Get<List<string>>() 
-                        ?? new List<string> { "THYAO", "AAPL", "NVDA", "TSLA" };
+        var stockList = _configuration.GetSection("StockSettings:PopularStocks").Get<List<string>>()
+                        ?? new List<string> { "THYAO", "GARAN", "EREGL", "ASELS" };
 
         var endDate = DateTime.Now;
         var startDate = endDate.AddYears(-1);
@@ -124,9 +107,9 @@ public class StockService : IStockService
             try
             {
                 string formattedSymbol = symbol.ToUpper();
-                if (!symbol.Contains('.') && !_nonBistSymbols.Contains(formattedSymbol) && !formattedSymbol.Contains('-'))
+                if (!formattedSymbol.Contains('.'))
                 {
-                     formattedSymbol = $"{formattedSymbol}.IS";
+                    formattedSymbol = $"{formattedSymbol}.IS";
                 }
 
                 var (stockPrices, baseCurrency) = await _yahooClient.GetChartDataWithCurrencyAsync(formattedSymbol, startDate, endDate);
@@ -181,8 +164,8 @@ public class StockService : IStockService
         string upperSymbol = symbol.ToUpper();
         string formattedSymbol = upperSymbol;
 
-        // Auto-append .IS for BIST stocks if not provided, avoiding US/Crypto symbols
-        if (!upperSymbol.Contains('.') && !_nonBistSymbols.Contains(upperSymbol) && !upperSymbol.Contains('-'))
+        // Auto-append .IS for BIST stocks if not provided
+        if (!upperSymbol.Contains('.'))
         {
             formattedSymbol = $"{upperSymbol}.IS";
         }

@@ -32,8 +32,6 @@ public class MarketSummary
     public decimal GoldChange { get; set; }
     public decimal Bist100Price { get; set; }
     public decimal Bist100Change { get; set; }
-    public decimal NasdaqPrice { get; set; }
-    public decimal NasdaqChange { get; set; }
 }
 
 // Yahoo Finance JSON DTOs
